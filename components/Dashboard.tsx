@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { GroceryList, User } from '../types';
-import { IconPlus, IconTrash, IconEdit, IconCheck, IconX } from './Icons';
+import { IconPlus, IconTrash, IconEdit, IconCheck, IconX, IconUsers } from './Icons';
 
 interface DashboardProps {
   lists: GroceryList[];
@@ -117,6 +117,10 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
             const progress = itemCount === 0 ? 0 : (checkedCount / itemCount) * 100;
             const isEditing = editingId === list.id;
             const isDeleting = deletingId === list.id;
+            
+            // Check if user is owner or invited
+            const isOwner = list.userId === currentUser.id;
+            const isShared = list.sharedWith && list.sharedWith.length > 0;
 
             return (
               <div
@@ -171,11 +175,24 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
                          <div className="flex items-center space-x-3 w-full">
                            <span className="text-3xl">{list.icon}</span>
                            <div className="flex-1 min-w-0">
-                                <h3 className="font-bold text-slate-800 text-lg leading-tight group-hover:text-emerald-600 transition-colors truncate">
-                                    {list.name}
-                                </h3>
+                                <div className="flex items-center gap-2">
+                                    <h3 className="font-bold text-slate-800 text-lg leading-tight group-hover:text-emerald-600 transition-colors truncate">
+                                        {list.name}
+                                    </h3>
+                                    {!isOwner && (
+                                        <span className="text-[10px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded font-bold border border-indigo-200">
+                                            De {list.ownerName || 'Outro'}
+                                        </span>
+                                    )}
+                                </div>
                                 <div className="flex items-center text-xs text-slate-400 mt-1">
                                     <span>{itemCount} itens no total</span>
+                                    {(isShared || !isOwner) && (
+                                        <span className="flex items-center ml-2 text-indigo-400">
+                                            <IconUsers className="w-3 h-3 mr-1" />
+                                            Compartilhado
+                                        </span>
+                                    )}
                                 </div>
                            </div>
                          </div>
@@ -199,7 +216,7 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
                    )}
                  </div>
 
-                 {/* Actions Footer */}
+                 {/* Actions Footer - Only owner can delete generally, but we allow simple delete for now */}
                  <div className={`border-t p-2 flex justify-end space-x-2 transition-colors ${isDeleting ? 'bg-red-50 border-red-100' : 'bg-slate-50/50 border-slate-100'}`}>
                       
                       {isEditing ? (
@@ -244,6 +261,7 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
                             >
                                 <IconEdit className="w-4 h-4" />
                             </button>
+                            {/* Allow delete if owner. Could hide for shared users, but for now allow them to "remove" it from their view */}
                             <button 
                                 onClick={(e) => startDelete(e, list.id)}
                                 className="p-2 text-slate-500 hover:text-red-600 hover:bg-white bg-transparent border border-transparent hover:border-slate-200 rounded-lg transition-all shadow-sm"

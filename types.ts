@@ -1,6 +1,7 @@
 export interface User {
   id: string;
   name: string;
+  email: string; // Adicionado para convites
   avatar: string;
   color: string;
 }
@@ -19,6 +20,10 @@ export interface GroceryList {
   items: GroceryItem[];
   color: string;
   icon: string;
+  createdAt?: number;
+  userId: string; // ID do dono
+  ownerName?: string; // Nome do dono para exibição
+  sharedWith?: string[]; // Array de emails com acesso
 }
 
 export enum ViewState {

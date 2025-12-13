@@ -1,17 +1,9 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { GeminiSuggestion } from "../types";
 
-const apiKey = process.env.API_KEY || '';
-
-// Initialize only if key exists to avoid crash, but handle checks in methods
-const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const generateSmartSuggestions = async (existingItems: string[]): Promise<GeminiSuggestion[]> => {
-  if (!ai) {
-    console.warn("Gemini API Key missing");
-    return [];
-  }
-
   try {
     const model = 'gemini-2.5-flash';
     const prompt = `
@@ -52,8 +44,6 @@ export const generateSmartSuggestions = async (existingItems: string[]): Promise
 };
 
 export const organizeRawInput = async (rawInput: string): Promise<{ name: string; category: string }[]> => {
-  if (!ai) return [];
-
   try {
     const model = 'gemini-2.5-flash';
     const prompt = `

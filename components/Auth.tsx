@@ -18,6 +18,22 @@ const Auth: React.FC<AuthProps> = ({ onLoginSuccess }) => {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
 
+  const getFriendlyErrorMessage = (errCode: string) => {
+      switch(errCode) {
+          case 'auth/invalid-email': return 'Email inválido.';
+          case 'auth/user-disabled': return 'Usuário desativado.';
+          case 'auth/user-not-found': return 'Usuário não encontrado.';
+          case 'auth/wrong-password': return 'Senha incorreta.';
+          case 'auth/email-already-in-use': return 'Este email já está em uso.';
+          case 'auth/weak-password': return 'A senha é muito fraca (mínimo 6 caracteres).';
+          case 'auth/invalid-credential': return 'Email ou senha incorretos.';
+          case 'auth/operation-not-allowed': return 'ERRO DE CONFIGURAÇÃO: O login por Email/Senha não está ativado no Firebase Console.';
+          case 'auth/network-request-failed': return 'Erro de rede. Verifique sua conexão.';
+          case 'auth/too-many-requests': return 'Muitas tentativas. Tente novamente mais tarde.';
+          default: return `Erro desconhecido: ${errCode}`;
+      }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -27,26 +43,23 @@ const Auth: React.FC<AuthProps> = ({ onLoginSuccess }) => {
     try {
       if (mode === 'LOGIN') {
         const user = await storageService.login(email, password);
-        if (user) {
-          onLoginSuccess(user);
-        } else {
-          setError('Conta não encontrada. Verifique os dados ou crie uma nova conta.');
-        }
+        // Sucesso tratado pelo listener no App.tsx
       } else if (mode === 'REGISTER') {
         if (!name || !email || !password) {
           setError('Preencha todos os campos.');
           setLoading(false);
           return;
         }
-        const user = await storageService.register(name, email, password);
-        onLoginSuccess(user);
+        await storageService.register(name, email, password);
       } else if (mode === 'FORGOT_PASSWORD') {
         await storageService.resetPassword(email);
         setMessage('Um link de redefinição foi enviado para seu email.');
         setTimeout(() => setMode('LOGIN'), 3000);
       }
-    } catch (err) {
-      setError('Ocorreu um erro. Tente novamente.');
+    } catch (err: any) {
+      console.error("Auth Error Full Object:", err);
+      const errorCode = err.code || 'unknown';
+      setError(getFriendlyErrorMessage(errorCode));
     } finally {
       setLoading(false);
     }
@@ -105,8 +118,8 @@ const Auth: React.FC<AuthProps> = ({ onLoginSuccess }) => {
             </div>
           )}
 
-          {error && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg">{error}</div>}
-          {message && <div className="p-3 bg-green-50 text-green-600 text-sm rounded-lg">{message}</div>}
+          {error && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg font-medium border border-red-100">{error}</div>}
+          {message && <div className="p-3 bg-green-50 text-green-600 text-sm rounded-lg font-medium border border-green-100">{message}</div>}
 
           <button 
             type="submit" 
@@ -136,11 +149,6 @@ const Auth: React.FC<AuthProps> = ({ onLoginSuccess }) => {
           )}
         </div>
         
-        {/* Helper for demo purposes */}
-        <div className="mt-8 p-4 bg-yellow-50 rounded-lg text-xs text-yellow-800 border border-yellow-100">
-           <strong>Dica Demo:</strong> Use o email "teste@teste.com" e senha "teste" para acesso rápido.
-        </div>
-
       </div>
     </div>
   );

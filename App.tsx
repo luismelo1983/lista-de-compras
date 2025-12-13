@@ -13,42 +13,41 @@ const App: React.FC = () => {
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
   const [initializing, setInitializing] = useState(true);
 
-  // Initial load
+  // Authentication & Data Subscription
   useEffect(() => {
-    // Check for logged in user
-    const user = storageService.getCurrentUser();
-    setCurrentUser(user);
-    
-    // Simulate fetching data
-    const loadedLists = storageService.getLists();
-    setLists(loadedLists);
-    setInitializing(false);
+    // Listen for auth changes
+    const unsubscribeAuth = storageService.onAuthChange((user) => {
+      setCurrentUser(user);
+      
+      if (user) {
+        // If logged in, subscribe to real-time updates for lists
+        // Note: We pass the whole user object now to support fetching shared lists by email
+        const unsubscribeLists = storageService.subscribeToLists(user, (updatedLists) => {
+          setLists(updatedLists);
+          setInitializing(false);
+        });
+        
+        // Cleanup list subscription on auth change or unmount
+        return () => unsubscribeLists();
+      } else {
+        setLists([]);
+        setInitializing(false);
+        return undefined;
+      }
+    });
+
+    return () => unsubscribeAuth();
   }, []);
 
-  // Sync simulation: Poll for changes (mocking real-time)
-  useEffect(() => {
-    if (!currentUser) return;
-    
-    const interval = setInterval(() => {
-       const latestLists = storageService.getLists();
-       
-       if (JSON.stringify(latestLists) !== JSON.stringify(lists)) {
-           setLists(latestLists);
-       }
-    }, 2000);
-    return () => clearInterval(interval);
-  }, [lists, currentUser]);
+  // No more setInterval polling needed! Firebase handles push updates.
 
   const handleLoginSuccess = (user: User) => {
-    setCurrentUser(user);
-    setLists(storageService.getLists());
+    // State handled by onAuthChange listener
   };
 
   const handleLogout = () => {
     storageService.logout();
-    setCurrentUser(null);
-    setCurrentView(ViewState.DASHBOARD);
-    setSelectedListId(null);
+    // State handled by onAuthChange listener
   };
 
   const handleSelectList = (listId: string) => {
@@ -62,30 +61,34 @@ const App: React.FC = () => {
   };
 
   const handleCreateList = (name: string) => {
-    if (name) {
-      const newList = storageService.createList(name);
-      setLists([...lists, newList]);
+    if (name && currentUser) {
+      // Async fire and forget for UI, Firebase listener updates the list
+      storageService.createList(name, currentUser);
     }
   };
 
   const handleEditList = (listId: string, newName: string, newIcon: string) => {
     if (newName) {
        storageService.updateListMetadata(listId, newName, newIcon);
-       setLists(prev => prev.map(l => l.id === listId ? { ...l, name: newName, icon: newIcon } : l));
+       // Optimistic update (optional, but firebase is fast enough usually)
     }
   };
 
   const handleDeleteList = (listId: string) => {
     storageService.deleteList(listId);
-    setLists(prev => prev.filter(l => l.id !== listId));
+    if (selectedListId === listId) {
+        handleBack();
+    }
   };
 
   const handleListUpdate = (updatedList: GroceryListType) => {
-    const newLists = lists.map(l => l.id === updatedList.id ? updatedList : l);
-    setLists(newLists);
+    // Send update to Firebase
+    storageService.saveList(updatedList);
+    // Note: We don't manually setLists here because the onSnapshot listener 
+    // in the useEffect will fire immediately with the local change and update the state.
   };
 
-  if (initializing) return null;
+  if (initializing) return <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-400">Carregando...</div>;
 
   if (!currentUser) {
     return <Auth onLoginSuccess={handleLoginSuccess} />;
