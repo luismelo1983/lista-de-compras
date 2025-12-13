@@ -144,14 +144,14 @@ import {
       };
   };
   
-  export const createList = async (name: string, user: User): Promise<void> => {
+  export const createList = async (name: string, icon: string, user: User): Promise<void> => {
       await addDoc(collection(db, 'lists'), {
           name,
           userId: user.id,
           ownerName: user.name,
           sharedWith: [],
           color: 'bg-blue-100',
-          icon: '📝',
+          icon: icon || '📝',
           items: [],
           createdAt: serverTimestamp()
       });

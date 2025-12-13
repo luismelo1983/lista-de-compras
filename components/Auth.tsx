@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { IconShoppingBag } from './Icons';
+import { IconShoppingBag, IconEye, IconEyeOff } from './Icons';
 import * as storageService from '../services/storageService';
 import { User } from '../types';
 
@@ -13,6 +13,7 @@ const Auth: React.FC<AuthProps> = ({ onLoginSuccess }) => {
   const [mode, setMode] = useState<AuthMode>('LOGIN');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -107,14 +108,23 @@ const Auth: React.FC<AuthProps> = ({ onLoginSuccess }) => {
           {mode !== 'FORGOT_PASSWORD' && (
             <div>
                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Senha</label>
-               <input 
-                type="password" 
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                placeholder="••••••••"
-                required
-              />
+               <div className="relative">
+                 <input 
+                  type={showPassword ? "text" : "password"} 
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all pr-12"
+                  placeholder="••••••••"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  {showPassword ? <IconEyeOff className="w-5 h-5" /> : <IconEye className="w-5 h-5" />}
+                </button>
+               </div>
             </div>
           )}
 

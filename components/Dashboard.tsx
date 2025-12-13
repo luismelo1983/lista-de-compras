@@ -6,7 +6,7 @@ interface DashboardProps {
   lists: GroceryList[];
   currentUser: User;
   onSelectKey: (listId: string) => void;
-  onCreateList: (name: string) => void;
+  onCreateList: (name: string, icon: string) => void;
   onEditList: (listId: string, newName: string, newIcon: string) => void;
   onDeleteList: (listId: string) => void;
 }
@@ -16,6 +16,7 @@ const EMOJI_OPTIONS = ['🛒', '🥬', '🥩', '🥖', '💊', '🎁', '🧹', '
 const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, onCreateList, onEditList, onDeleteList }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [newListName, setNewListName] = useState('');
+  const [newListIcon, setNewListIcon] = useState(EMOJI_OPTIONS[0]);
 
   // States for Inline Editing and Deleting
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -27,12 +28,23 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
 
+  // Determine list count text
+  let listCountText = '';
+  if (lists.length === 0) {
+      listCountText = 'Você não tem listas de compras ativas';
+  } else if (lists.length === 1) {
+      listCountText = 'Você tem 1 lista de compras ativa';
+  } else {
+      listCountText = `Vocês têm ${lists.length} listas de compras ativas`;
+  }
+
   // --- Create Handlers ---
   const handleCreateSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (newListName.trim()) {
-      onCreateList(newListName.trim());
+      onCreateList(newListName.trim(), newListIcon);
       setNewListName('');
+      setNewListIcon(EMOJI_OPTIONS[0]);
       setIsCreating(false);
     }
   };
@@ -41,6 +53,7 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
       e.stopPropagation();
       setIsCreating(false);
       setNewListName('');
+      setNewListIcon(EMOJI_OPTIONS[0]);
   };
 
   // --- Edit Handlers ---
@@ -97,7 +110,7 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">{greeting}, {currentUser.name}</h1>
-          <p className="text-slate-500 text-sm">Vocês têm {lists.length} listas de compras ativas</p>
+          <p className="text-slate-500 text-sm">{listCountText}</p>
         </div>
         <div className="w-12 h-12 rounded-full overflow-hidden shadow-md ring-4 ring-white">
           <img src={currentUser.avatar} alt={currentUser.name} className="w-full h-full object-cover" />
@@ -280,21 +293,45 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
           {isCreating ? (
              <div className="flex flex-col p-5 rounded-2xl border-2 border-emerald-400 bg-emerald-50 h-full min-h-[160px] relative shadow-lg">
                 <label className="text-xs font-bold text-emerald-700 uppercase mb-2">Nova Lista</label>
-                <input 
-                    autoFocus
-                    type="text"
-                    value={newListName}
-                    onChange={(e) => setNewListName(e.target.value)}
-                    onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleCreateSubmit();
-                        if (e.key === 'Escape') {
-                           setIsCreating(false);
-                           setNewListName('');
-                        }
-                    }}
-                    className="w-full bg-white border border-emerald-200 rounded-xl px-4 py-3 text-slate-800 outline-none focus:ring-2 focus:ring-emerald-500 mb-4 shadow-sm"
-                    placeholder="Ex: Farmácia, Churrasco..."
-                />
+                
+                <div className="flex items-center space-x-2 mb-3">
+                   <div className="text-3xl bg-white p-1 rounded-lg border border-emerald-100 shadow-sm">{newListIcon}</div>
+                   <input 
+                      autoFocus
+                      type="text"
+                      value={newListName}
+                      onChange={(e) => setNewListName(e.target.value)}
+                      onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleCreateSubmit();
+                          if (e.key === 'Escape') {
+                            setIsCreating(false);
+                            setNewListName('');
+                            setNewListIcon(EMOJI_OPTIONS[0]);
+                          }
+                      }}
+                      className="w-full bg-white border border-emerald-200 rounded-xl px-4 py-3 text-slate-800 outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm"
+                      placeholder="Ex: Farmácia, Churrasco..."
+                   />
+                </div>
+
+                <div className="mb-4">
+                     <p className="text-[10px] uppercase font-bold text-emerald-600/70 mb-2">Escolha um ícone:</p>
+                     <div className="flex flex-wrap gap-2">
+                         {EMOJI_OPTIONS.map(emoji => (
+                             <button
+                                 key={emoji}
+                                 onClick={(e) => {
+                                     e.stopPropagation();
+                                     setNewListIcon(emoji);
+                                 }}
+                                 className={`w-8 h-8 flex items-center justify-center rounded-md text-lg transition-colors ${newListIcon === emoji ? 'bg-emerald-200 ring-2 ring-emerald-500 text-emerald-900' : 'bg-white/80 hover:bg-white'}`}
+                             >
+                                 {emoji}
+                             </button>
+                         ))}
+                     </div>
+                </div>
+
                 <div className="flex justify-end space-x-2 mt-auto">
                     <button 
                         onClick={cancelCreate}

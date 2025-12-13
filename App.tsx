@@ -60,10 +60,10 @@ const App: React.FC = () => {
     setCurrentView(ViewState.DASHBOARD);
   };
 
-  const handleCreateList = (name: string) => {
+  const handleCreateList = (name: string, icon: string) => {
     if (name && currentUser) {
       // Async fire and forget for UI, Firebase listener updates the list
-      storageService.createList(name, currentUser);
+      storageService.createList(name, icon, currentUser);
     }
   };
 
