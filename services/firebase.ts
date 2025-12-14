@@ -3,14 +3,10 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 // ------------------------------------------------------------------
-// INSTRUÇÕES:
-// 1. Vá ao Console do Firebase > Configurações do Projeto > Geral.
-// 2. Role até "Seus aplicativos" e selecione "Config".
-// 3. Copie os valores e substitua abaixo.
+// CONFIGURAÇÃO FIREBASE
 // ------------------------------------------------------------------
 
 const firebaseConfig = {
-  // Exemplo: apiKey: "AIzaSyDOCAbC123dEfG456hIj789...",
   apiKey: "AIzaSyA7Wq13_QhuSxUKP732QaGHfRQ0KfrPJ80",
   authDomain: "lista-de-compras-a6e5e.firebaseapp.com",
   projectId: "lista-de-compras-a6e5e",

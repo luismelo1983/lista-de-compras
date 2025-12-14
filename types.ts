@@ -29,6 +29,7 @@ export interface GroceryList {
 export enum ViewState {
   DASHBOARD = 'DASHBOARD',
   LIST_DETAIL = 'LIST_DETAIL',
+  PROFILE = 'PROFILE',
 }
 
 export interface GeminiSuggestion {

@@ -31,11 +31,11 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
   // Determine list count text
   let listCountText = '';
   if (lists.length === 0) {
-      listCountText = 'Você não tem listas de compras ativas';
+      listCountText = 'Sem listas ativas';
   } else if (lists.length === 1) {
-      listCountText = 'Você tem 1 lista de compras ativa';
+      listCountText = '1 lista ativa';
   } else {
-      listCountText = `Vocês têm ${lists.length} listas de compras ativas`;
+      listCountText = `${lists.length} listas ativas`;
   }
 
   // --- Create Handlers ---
@@ -105,25 +105,25 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
   };
 
   return (
-    <div className="space-y-8 pb-20">
-      {/* Header */}
+    <div className="space-y-6 pb-20">
+      {/* Header Reduced */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">{greeting}, {currentUser.name}</h1>
-          <p className="text-slate-500 text-sm">{listCountText}</p>
+          <h1 className="text-xl font-bold text-slate-800">{greeting}, {currentUser.name}</h1>
+          <p className="text-slate-500 text-xs">{listCountText}</p>
         </div>
-        <div className="w-12 h-12 rounded-full overflow-hidden shadow-md ring-4 ring-white">
+        <div className="w-10 h-10 rounded-full overflow-hidden shadow-md ring-2 ring-white">
           <img src={currentUser.avatar} alt={currentUser.name} className="w-full h-full object-cover" />
         </div>
       </div>
 
-      {/* Lists Grid */}
+      {/* Lists Grid Reduced */}
       <div>
-        <div className="flex justify-between items-end mb-4">
-          <h2 className="text-lg font-bold text-slate-800">Suas Listas</h2>
+        <div className="flex justify-between items-end mb-3">
+          <h2 className="text-base font-bold text-slate-800">Suas Listas</h2>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {lists.map((list) => {
             const itemCount = list.items.length;
             const checkedCount = list.items.filter(i => i.checked).length;
@@ -138,20 +138,20 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
             return (
               <div
                 key={list.id}
-                className={`group bg-white hover:bg-slate-50 transition-all duration-200 rounded-2xl shadow-sm border ${isDeleting ? 'border-red-200 bg-red-50' : 'border-slate-100'} relative overflow-hidden flex flex-col`}
+                className={`group bg-white hover:bg-slate-50 transition-all duration-200 rounded-xl shadow-sm border ${isDeleting ? 'border-red-200 bg-red-50' : 'border-slate-100'} relative overflow-hidden flex flex-col`}
                 onClick={() => !isEditing && !isDeleting && onSelectKey(list.id)}
               >
-                 <div className={`absolute top-0 left-0 w-1.5 h-full ${list.color}`}></div> {/* Color strip */}
+                 <div className={`absolute top-0 left-0 w-1 h-full ${list.color}`}></div> {/* Color strip */}
                  
-                 <div className="p-5 flex-1 cursor-pointer">
-                   <div className="flex justify-between items-start mb-3">
+                 <div className="p-4 flex-1 cursor-pointer">
+                   <div className="flex justify-between items-start mb-2">
                      <div className="flex flex-col w-full">
                        
                        {isEditing ? (
                          // Edit Mode Layout
-                         <div className="w-full space-y-3">
+                         <div className="w-full space-y-2">
                             <div className="flex items-center space-x-2">
-                                <span className="text-3xl bg-slate-100 p-1 rounded cursor-default">{editIcon}</span>
+                                <span className="text-2xl bg-slate-100 p-1 rounded cursor-default">{editIcon}</span>
                                 <input 
                                     type="text"
                                     value={editName}
@@ -162,12 +162,12 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
                                         if (e.key === 'Escape') cancelEdit(e as any);
                                     }}
                                     autoFocus
-                                    className="flex-1 bg-white border border-indigo-300 rounded px-2 py-1.5 text-lg font-bold text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500"
+                                    className="flex-1 bg-white border border-indigo-300 rounded px-2 py-1 text-base font-bold text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500"
                                 />
                             </div>
                             <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
-                                <p className="text-[10px] uppercase font-bold text-slate-400 mb-2">Escolha um ícone:</p>
-                                <div className="flex flex-wrap gap-2">
+                                <p className="text-[10px] uppercase font-bold text-slate-400 mb-1">Escolha um ícone:</p>
+                                <div className="flex flex-wrap gap-1">
                                     {EMOJI_OPTIONS.map(emoji => (
                                         <button
                                             key={emoji}
@@ -175,7 +175,7 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
                                                 e.stopPropagation();
                                                 setEditIcon(emoji);
                                             }}
-                                            className={`w-8 h-8 flex items-center justify-center rounded-md text-lg transition-colors ${editIcon === emoji ? 'bg-indigo-100 ring-2 ring-indigo-400' : 'bg-white hover:bg-slate-200'}`}
+                                            className={`w-7 h-7 flex items-center justify-center rounded-md text-base transition-colors ${editIcon === emoji ? 'bg-indigo-100 ring-2 ring-indigo-400' : 'bg-white hover:bg-slate-200'}`}
                                         >
                                             {emoji}
                                         </button>
@@ -186,24 +186,24 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
                        ) : (
                          // View Mode Layout
                          <div className="flex items-center space-x-3 w-full">
-                           <span className="text-3xl">{list.icon}</span>
+                           <span className="text-2xl">{list.icon}</span>
                            <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
-                                    <h3 className="font-bold text-slate-800 text-lg leading-tight group-hover:text-emerald-600 transition-colors truncate">
+                                    <h3 className="font-bold text-slate-800 text-base leading-tight group-hover:text-emerald-600 transition-colors truncate">
                                         {list.name}
                                     </h3>
                                     {!isOwner && (
-                                        <span className="text-[10px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded font-bold border border-indigo-200">
-                                            De {list.ownerName || 'Outro'}
+                                        <span className="text-[10px] bg-indigo-100 text-indigo-700 px-1 py-0 rounded font-bold border border-indigo-200">
+                                            {list.ownerName || 'Outro'}
                                         </span>
                                     )}
                                 </div>
-                                <div className="flex items-center text-xs text-slate-400 mt-1">
-                                    <span>{itemCount} itens no total</span>
+                                <div className="flex items-center text-[11px] text-slate-400 mt-0.5">
+                                    <span>{itemCount} itens</span>
                                     {(isShared || !isOwner) && (
                                         <span className="flex items-center ml-2 text-indigo-400">
                                             <IconUsers className="w-3 h-3 mr-1" />
-                                            Compartilhado
+                                            Grupo
                                         </span>
                                     )}
                                 </div>
@@ -214,12 +214,12 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
                    </div>
 
                    {!isEditing && (
-                       <div className="space-y-2 mt-2">
-                         <div className="flex justify-between text-sm text-slate-500 font-medium">
-                           <span>{checkedCount} comprados</span>
+                       <div className="space-y-1.5 mt-1">
+                         <div className="flex justify-between text-[10px] text-slate-500 font-medium">
+                           <span>{checkedCount} / {itemCount}</span>
                            <span>{Math.round(progress)}%</span>
                          </div>
-                         <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                         <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
                            <div 
                               className={`h-full rounded-full transition-all duration-500 ${progress === 100 ? 'bg-emerald-500' : 'bg-slate-800'}`} 
                               style={{ width: `${progress}%` }}
@@ -229,39 +229,39 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
                    )}
                  </div>
 
-                 {/* Actions Footer - Only owner can delete generally, but we allow simple delete for now */}
-                 <div className={`border-t p-2 flex justify-end space-x-2 transition-colors ${isDeleting ? 'bg-red-50 border-red-100' : 'bg-slate-50/50 border-slate-100'}`}>
+                 {/* Actions Footer Reduced */}
+                 <div className={`border-t p-1.5 flex justify-end space-x-1 transition-colors ${isDeleting ? 'bg-red-50 border-red-100' : 'bg-slate-50/50 border-slate-100'}`}>
                       
                       {isEditing ? (
                           <>
                             <button 
                                 onClick={cancelEdit}
-                                className="px-3 py-1.5 text-xs font-semibold text-slate-500 bg-white border border-slate-200 rounded-lg hover:bg-slate-100"
+                                className="px-2 py-1 text-[10px] font-semibold text-slate-500 bg-white border border-slate-200 rounded hover:bg-slate-100"
                             >
                                 Cancelar
                             </button>
                             <button 
                                 onClick={(e) => saveEdit(e, list.id)}
-                                className="px-3 py-1.5 text-xs font-semibold text-white bg-indigo-600 border border-indigo-600 rounded-lg hover:bg-indigo-700 flex items-center gap-1"
+                                className="px-2 py-1 text-[10px] font-semibold text-white bg-indigo-600 border border-indigo-600 rounded hover:bg-indigo-700 flex items-center gap-1"
                             >
                                 <IconCheck className="w-3 h-3" /> Salvar
                             </button>
                           </>
                       ) : isDeleting ? (
                           <div className="flex items-center w-full justify-between px-1">
-                              <span className="text-xs font-bold text-red-600">Excluir lista?</span>
+                              <span className="text-[10px] font-bold text-red-600">Excluir?</span>
                               <div className="flex space-x-2">
                                 <button 
                                     onClick={cancelDelete}
-                                    className="px-3 py-1.5 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-100"
+                                    className="px-2 py-1 text-[10px] font-semibold text-slate-600 bg-white border border-slate-200 rounded hover:bg-slate-100"
                                 >
                                     Não
                                 </button>
                                 <button 
                                     onClick={(e) => confirmDelete(e, list.id)}
-                                    className="px-3 py-1.5 text-xs font-semibold text-white bg-red-600 border border-red-600 rounded-lg hover:bg-red-700 shadow-sm"
+                                    className="px-2 py-1 text-[10px] font-semibold text-white bg-red-600 border border-red-600 rounded hover:bg-red-700 shadow-sm"
                                 >
-                                    Sim, excluir
+                                    Sim
                                 </button>
                               </div>
                           </div>
@@ -269,18 +269,17 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
                           <>
                             <button 
                                 onClick={(e) => startEdit(e, list)}
-                                className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-white bg-transparent border border-transparent hover:border-slate-200 rounded-lg transition-all shadow-sm"
+                                className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white bg-transparent border border-transparent hover:border-slate-200 rounded transition-all"
                                 title="Editar Lista"
                             >
-                                <IconEdit className="w-4 h-4" />
+                                <IconEdit className="w-3.5 h-3.5" />
                             </button>
-                            {/* Allow delete if owner. Could hide for shared users, but for now allow them to "remove" it from their view */}
                             <button 
                                 onClick={(e) => startDelete(e, list.id)}
-                                className="p-2 text-slate-500 hover:text-red-600 hover:bg-white bg-transparent border border-transparent hover:border-slate-200 rounded-lg transition-all shadow-sm"
+                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-white bg-transparent border border-transparent hover:border-slate-200 rounded transition-all"
                                 title="Excluir Lista"
                             >
-                                <IconTrash className="w-4 h-4" />
+                                <IconTrash className="w-3.5 h-3.5" />
                             </button>
                           </>
                       )}
@@ -289,13 +288,13 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
             );
           })}
 
-          {/* Create New List Card */}
+          {/* Create New List Card Reduced */}
           {isCreating ? (
-             <div className="flex flex-col p-5 rounded-2xl border-2 border-emerald-400 bg-emerald-50 h-full min-h-[160px] relative shadow-lg">
-                <label className="text-xs font-bold text-emerald-700 uppercase mb-2">Nova Lista</label>
+             <div className="flex flex-col p-4 rounded-xl border-2 border-emerald-400 bg-emerald-50 h-full min-h-[140px] relative shadow-lg">
+                <label className="text-[10px] font-bold text-emerald-700 uppercase mb-2">Nova Lista</label>
                 
-                <div className="flex items-center space-x-2 mb-3">
-                   <div className="text-3xl bg-white p-1 rounded-lg border border-emerald-100 shadow-sm">{newListIcon}</div>
+                <div className="flex items-center space-x-2 mb-2">
+                   <div className="text-2xl bg-white p-1 rounded-lg border border-emerald-100 shadow-sm">{newListIcon}</div>
                    <input 
                       autoFocus
                       type="text"
@@ -309,14 +308,14 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
                             setNewListIcon(EMOJI_OPTIONS[0]);
                           }
                       }}
-                      className="w-full bg-white border border-emerald-200 rounded-xl px-4 py-3 text-slate-800 outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm"
-                      placeholder="Ex: Farmácia, Churrasco..."
+                      className="w-full bg-white border border-emerald-200 rounded-lg px-3 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm"
+                      placeholder="Nome da lista..."
                    />
                 </div>
 
-                <div className="mb-4">
-                     <p className="text-[10px] uppercase font-bold text-emerald-600/70 mb-2">Escolha um ícone:</p>
-                     <div className="flex flex-wrap gap-2">
+                <div className="mb-3">
+                     <p className="text-[10px] uppercase font-bold text-emerald-600/70 mb-1">Ícone:</p>
+                     <div className="flex flex-wrap gap-1">
                          {EMOJI_OPTIONS.map(emoji => (
                              <button
                                  key={emoji}
@@ -324,7 +323,7 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
                                      e.stopPropagation();
                                      setNewListIcon(emoji);
                                  }}
-                                 className={`w-8 h-8 flex items-center justify-center rounded-md text-lg transition-colors ${newListIcon === emoji ? 'bg-emerald-200 ring-2 ring-emerald-500 text-emerald-900' : 'bg-white/80 hover:bg-white'}`}
+                                 className={`w-7 h-7 flex items-center justify-center rounded text-base transition-colors ${newListIcon === emoji ? 'bg-emerald-200 ring-2 ring-emerald-500 text-emerald-900' : 'bg-white/80 hover:bg-white'}`}
                              >
                                  {emoji}
                              </button>
@@ -335,30 +334,30 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
                 <div className="flex justify-end space-x-2 mt-auto">
                     <button 
                         onClick={cancelCreate}
-                        className="p-2 text-emerald-600 hover:bg-emerald-100 rounded-lg transition-colors"
+                        className="p-1.5 text-emerald-600 hover:bg-emerald-100 rounded transition-colors"
                         title="Cancelar"
                     >
-                        <IconX className="w-5 h-5" />
+                        <IconX className="w-4 h-4" />
                     </button>
                     <button 
                         onClick={() => handleCreateSubmit()}
                         disabled={!newListName.trim()}
-                        className="p-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 shadow-sm disabled:opacity-50 disabled:shadow-none transition-all"
+                        className="p-1.5 bg-emerald-600 text-white rounded hover:bg-emerald-700 shadow-sm disabled:opacity-50 disabled:shadow-none transition-all"
                         title="Criar Lista"
                     >
-                        <IconCheck className="w-5 h-5" />
+                        <IconCheck className="w-4 h-4" />
                     </button>
                 </div>
             </div>
           ) : (
             <button
               onClick={() => setIsCreating(true)}
-              className="flex flex-col items-center justify-center p-6 rounded-2xl border-2 border-dashed border-slate-200 hover:border-emerald-400 hover:bg-emerald-50 transition-all duration-200 group h-full min-h-[160px]"
+              className="flex flex-col items-center justify-center p-4 rounded-xl border-2 border-dashed border-slate-200 hover:border-emerald-400 hover:bg-emerald-50 transition-all duration-200 group h-full min-h-[140px]"
             >
-              <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 mb-3 group-hover:scale-110 transition-transform shadow-sm">
-                <IconPlus className="w-6 h-6" />
+              <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 mb-2 group-hover:scale-110 transition-transform shadow-sm">
+                <IconPlus className="w-5 h-5" />
               </div>
-              <span className="font-semibold text-slate-600 group-hover:text-emerald-700">Criar Nova Lista</span>
+              <span className="font-semibold text-sm text-slate-600 group-hover:text-emerald-700">Criar Nova Lista</span>
             </button>
           )}
         </div>

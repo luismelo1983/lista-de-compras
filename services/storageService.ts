@@ -3,6 +3,7 @@ import {
     createUserWithEmailAndPassword, 
     signOut, 
     updateProfile, 
+    updatePassword,
     onAuthStateChanged,
     User as FirebaseUser
   } from 'firebase/auth';
@@ -66,6 +67,21 @@ import {
   export const resetPassword = async (email: string): Promise<boolean> => {
      return true;
   }
+
+  export const updateUserProfileName = async (name: string): Promise<void> => {
+    if (auth.currentUser) {
+        await updateProfile(auth.currentUser, {
+            displayName: name,
+            photoURL: `https://api.dicebear.com/7.x/initials/svg?seed=${name}`
+        });
+    }
+  };
+
+  export const updateUserPassword = async (newPassword: string): Promise<void> => {
+    if (auth.currentUser) {
+        await updatePassword(auth.currentUser, newPassword);
+    }
+  };
   
   // --- Firestore List Management ---
   
