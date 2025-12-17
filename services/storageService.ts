@@ -95,8 +95,12 @@ import {
           const combined = [...ownedLists, ...sharedLists];
           const uniqueLists = Array.from(new Map(combined.map(item => [item.id, item])).values());
           
-          // Sort client-side
-          uniqueLists.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+          // Sort client-side by custom 'order' field, fallback to creation time
+          uniqueLists.sort((a, b) => {
+              const orderA = a.order ?? a.createdAt ?? 0;
+              const orderB = b.order ?? b.createdAt ?? 0;
+              return orderA - orderB;
+          });
           onUpdate(uniqueLists);
       };
 
@@ -116,9 +120,11 @@ import {
                   userId: data.userId,
                   ownerName: data.ownerName,
                   sharedWith: data.sharedWith || [],
+                  webhookUrl: data.webhookUrl || '',
                   color: data.color || 'bg-blue-100',
                   icon: data.icon || '📝',
                   items: data.items || [],
+                  order: data.order,
                   createdAt: data.createdAt?.toMillis ? data.createdAt.toMillis() : Date.now()
               });
           });
@@ -144,9 +150,11 @@ import {
                       userId: data.userId,
                       ownerName: data.ownerName,
                       sharedWith: data.sharedWith || [],
+                      webhookUrl: data.webhookUrl || '',
                       color: data.color || 'bg-indigo-100', // Visually distinct
                       icon: data.icon || '📝',
                       items: data.items || [],
+                      order: data.order,
                       createdAt: data.createdAt?.toMillis ? data.createdAt.toMillis() : Date.now()
                   });
               });
@@ -169,6 +177,7 @@ import {
           color: 'bg-blue-100',
           icon: icon || '📝',
           items: [],
+          order: Date.now(), // Default order based on timestamp (puts new lists at bottom initially)
           createdAt: serverTimestamp()
       });
   };
@@ -181,11 +190,19 @@ import {
           items: updatedList.items
       });
   };
+
+  export const updateListOrder = async (listId: string, newOrder: number): Promise<void> => {
+      const listRef = doc(db, 'lists', listId);
+      await updateDoc(listRef, {
+          order: newOrder
+      });
+  };
   
-  export const updateListMetadata = async (listId: string, name: string, icon?: string): Promise<void> => {
+  export const updateListMetadata = async (listId: string, name: string, icon?: string, webhookUrl?: string): Promise<void> => {
       const listRef = doc(db, 'lists', listId);
       const updates: any = { name };
       if (icon) updates.icon = icon;
+      if (webhookUrl !== undefined) updates.webhookUrl = webhookUrl;
       await updateDoc(listRef, updates);
   };
   

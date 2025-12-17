@@ -21,9 +21,11 @@ export interface GroceryList {
   color: string;
   icon: string;
   createdAt?: number;
+  order?: number; // Campo para ordenação personalizada
   userId: string; // ID do dono
   ownerName?: string; // Nome do dono para exibição
   sharedWith?: string[]; // Array de emails com acesso
+  webhookUrl?: string; // URL para integração (BotConversa, Zapier, etc)
 }
 
 export enum ViewState {

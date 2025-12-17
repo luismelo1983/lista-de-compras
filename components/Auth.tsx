@@ -75,7 +75,7 @@ const Auth: React.FC<AuthProps> = ({ onLoginSuccess }) => {
                 <IconShoppingBag className="w-6 h-6" />
             </div>
             <h1 className="text-xl font-extrabold text-slate-800 tracking-tight">Lista de <span className="text-indigo-600">Compras</span></h1>
-            <p className="text-slate-400 text-xs mt-1">leve tudo e não precise voltar</p>
+            <p className="text-slate-400 text-xs mt-1">para você não ter que voltar</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3">

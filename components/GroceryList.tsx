@@ -1,16 +1,17 @@
 import React, { useState, useRef } from 'react';
-import { GroceryList as GroceryListType, GroceryItem, GeminiSuggestion } from '../types';
-import { IconArrowLeft, IconCheck, IconTrash, IconPlus, IconSparkles, IconEdit, IconX, IconShare, IconUsers } from './Icons';
+import { GroceryList as GroceryListType, GroceryItem, GeminiSuggestion, User } from '../types';
+import { IconArrowLeft, IconCheck, IconTrash, IconPlus, IconSparkles, IconEdit, IconX, IconUsers, IconChevronUp, IconChevronDown } from './Icons';
 import * as storageService from '../services/storageService';
 import * as geminiService from '../services/geminiService';
 
 interface GroceryListProps {
   list: GroceryListType;
+  currentUser: User;
   onBack: () => void;
   onUpdate: (updatedList: GroceryListType) => void;
 }
 
-const GroceryList: React.FC<GroceryListProps> = ({ list, onBack, onUpdate }) => {
+const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, onUpdate }) => {
   const [newItemName, setNewItemName] = useState('');
   const [isAdding, setIsAdding] = useState(false);
   const [suggestions, setSuggestions] = useState<GeminiSuggestion[]>([]);
@@ -28,23 +29,46 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, onBack, onUpdate }) => 
   // Scroll ref
   const listContainerRef = useRef<HTMLDivElement>(null);
 
-  // Sorting: unchecked first, then checked (newest checked at bottom of check list)
-  const sortedItems = [...list.items].sort((a, b) => {
-    if (a.checked === b.checked) return b.createdAt - a.createdAt; // Newest first for same status
-    return a.checked ? 1 : -1; // Unchecked first
-  });
+  // --- Sorting & Display Logic ---
+  // Active items: Use the native array order (allows user reordering)
+  const activeItems = list.items.filter(i => !i.checked);
+  
+  // Completed items: Sorted ALPHABETICALLY (A-Z)
+  const completedItems = list.items
+    .filter(i => i.checked)
+    .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt-BR', { sensitivity: 'base' }));
 
-  // Split into active and completed for visual separation
-  const activeItems = sortedItems.filter(i => !i.checked);
-  const completedItems = sortedItems.filter(i => i.checked);
-
-  const toggleItem = (itemId: string) => {
-    const updatedItems = list.items.map(item => 
-      item.id === itemId ? { ...item, checked: !item.checked } : item
+  const toggleItem = (item: GroceryItem) => {
+    const isNowChecked = !item.checked;
+    
+    // Update local state and firestore
+    const updatedItems = list.items.map(i => 
+      i.id === item.id ? { ...i, checked: isNowChecked } : i
     );
     const updatedList = { ...list, items: updatedItems };
     onUpdate(updatedList);
     storageService.saveList(updatedList);
+
+    // --- Webhook Trigger ---
+    // Se o item foi marcado como "comprado" e a lista tem um webhook configurado
+    if (isNowChecked && list.webhookUrl) {
+        fetch(list.webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                event: 'item_completed',
+                listName: list.name,
+                item: item.name,
+                category: item.category,
+                user: currentUser.name,
+                userEmail: currentUser.email,
+                timestamp: new Date().toISOString()
+            })
+        }).catch(err => {
+            console.error("Webhook trigger failed:", err);
+            // Non-blocking error
+        });
+    }
   };
 
   const scrollToTop = () => {
@@ -67,6 +91,7 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, onBack, onUpdate }) => 
       createdAt: Date.now(),
     };
 
+    // Add to top (start of array)
     const updatedList = { ...list, items: [newItem, ...list.items] };
     onUpdate(updatedList);
     storageService.saveList(updatedList);
@@ -81,6 +106,36 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, onBack, onUpdate }) => 
       onUpdate(updatedList);
       storageService.saveList(updatedList);
     }
+  };
+
+  const moveItem = (itemId: string, direction: 'up' | 'down') => {
+      // Create a copy of the main list
+      const itemsCopy = [...list.items];
+      
+      // Find where this item is in the *Active* (unchecked) view logic
+      const activeIndices = itemsCopy
+        .map((item, index) => ({ ...item, originalIndex: index }))
+        .filter(item => !item.checked);
+
+      const currentActiveIndex = activeIndices.findIndex(i => i.id === itemId);
+      
+      if (currentActiveIndex === -1) return; // Should not happen
+
+      const targetActiveIndex = direction === 'up' ? currentActiveIndex - 1 : currentActiveIndex + 1;
+
+      // Check bounds within active items
+      if (targetActiveIndex < 0 || targetActiveIndex >= activeIndices.length) return;
+
+      // Get the actual array indices to swap
+      const originalIndexA = activeIndices[currentActiveIndex].originalIndex;
+      const originalIndexB = activeIndices[targetActiveIndex].originalIndex;
+
+      // Swap
+      [itemsCopy[originalIndexA], itemsCopy[originalIndexB]] = [itemsCopy[originalIndexB], itemsCopy[originalIndexA]];
+
+      const updatedList = { ...list, items: itemsCopy };
+      onUpdate(updatedList);
+      storageService.saveList(updatedList);
   };
 
   const startEditing = (item: GroceryItem) => {
@@ -156,8 +211,9 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, onBack, onUpdate }) => 
     setIsAdding(false);
   };
 
-  const ItemRow: React.FC<{ item: GroceryItem }> = ({ item }) => {
+  const ItemRow: React.FC<{ item: GroceryItem, index?: number, isLast?: boolean }> = ({ item, index, isLast }) => {
     const isEditing = editingItemId === item.id;
+    const isActive = !item.checked;
 
     if (isEditing) {
       return (
@@ -189,7 +245,7 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, onBack, onUpdate }) => 
       >
         <div className="flex items-center space-x-3 flex-1 min-w-0">
             <button 
-                onClick={() => toggleItem(item.id)}
+                onClick={() => toggleItem(item)}
                 className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${item.checked ? 'bg-slate-400 border-slate-400 text-white' : 'border-slate-300 hover:border-emerald-400 text-transparent hover:text-emerald-400'}`}
             >
                 <IconCheck className="w-3 h-3" />
@@ -201,19 +257,42 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, onBack, onUpdate }) => 
             </div>
         </div>
         
-        <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-           <button 
-              onClick={() => startEditing(item)}
-              className="p-1.5 text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 rounded transition-all"
-          >
-              <IconEdit className="w-3.5 h-3.5" />
-          </button>
-          <button 
-              onClick={() => deleteItem(item.id)}
-              className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded transition-all"
-          >
-              <IconTrash className="w-3.5 h-3.5" />
-          </button>
+        <div className="flex items-center">
+           {isActive && (
+             <div className="flex items-center gap-2 mr-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                <button 
+                   disabled={index === 0}
+                   onClick={() => moveItem(item.id, 'up')}
+                   className="p-1.5 text-slate-300 hover:text-indigo-600 hover:bg-slate-50 rounded disabled:opacity-20 disabled:hover:text-slate-300 disabled:hover:bg-transparent transition-colors"
+                   title="Mover para cima"
+                >
+                    <IconChevronUp className="w-4 h-4" />
+                </button>
+                <button 
+                   disabled={isLast}
+                   onClick={() => moveItem(item.id, 'down')}
+                   className="p-1.5 text-slate-300 hover:text-indigo-600 hover:bg-slate-50 rounded disabled:opacity-20 disabled:hover:text-slate-300 disabled:hover:bg-transparent transition-colors"
+                   title="Mover para baixo"
+                >
+                    <IconChevronDown className="w-4 h-4" />
+                </button>
+             </div>
+           )}
+
+           <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity border-l border-slate-100 pl-1 ml-1">
+              <button 
+                  onClick={() => startEditing(item)}
+                  className="p-1.5 text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 rounded transition-all"
+              >
+                  <IconEdit className="w-3.5 h-3.5" />
+              </button>
+              <button 
+                  onClick={() => deleteItem(item.id)}
+                  className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded transition-all"
+              >
+                  <IconTrash className="w-3.5 h-3.5" />
+              </button>
+           </div>
         </div>
       </div>
     );
@@ -367,8 +446,13 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, onBack, onUpdate }) => 
         
         {/* Active Items */}
         <div className="space-y-1.5">
-            {activeItems.map((item) => (
-                <ItemRow key={item.id} item={item} />
+            {activeItems.map((item, idx) => (
+                <ItemRow 
+                    key={item.id} 
+                    item={item} 
+                    index={idx} 
+                    isLast={idx === activeItems.length - 1}
+                />
             ))}
         </div>
 

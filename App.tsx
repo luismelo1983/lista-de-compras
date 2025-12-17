@@ -92,9 +92,9 @@ const App: React.FC = () => {
     }
   };
 
-  const handleEditList = (listId: string, newName: string, newIcon: string) => {
+  const handleEditList = (listId: string, newName: string, newIcon: string, newWebhookUrl: string) => {
     if (newName) {
-       storageService.updateListMetadata(listId, newName, newIcon);
+       storageService.updateListMetadata(listId, newName, newIcon, newWebhookUrl);
     }
   };
 
@@ -103,6 +103,37 @@ const App: React.FC = () => {
     if (selectedListId === listId) {
         handleBack();
     }
+  };
+  
+  const handleMoveList = (listId: string, direction: 'up' | 'down') => {
+      const index = lists.findIndex(l => l.id === listId);
+      if (index === -1) return;
+      
+      const targetIndex = direction === 'up' ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= lists.length) return;
+      
+      const listA = lists[index];
+      const listB = lists[targetIndex];
+      
+      // We need to swap the 'order' fields. 
+      // If 'order' is missing on legacy items, default to createdAt or Date.now() to establish a baseline
+      const orderA = listA.order ?? (listA.createdAt || Date.now());
+      const orderB = listB.order ?? (listB.createdAt || Date.now());
+      
+      // If orders happen to be identical, artificially offset them so the swap works effectively
+      let newOrderA = orderB;
+      let newOrderB = orderA;
+      
+      if (newOrderA === newOrderB) {
+          if (direction === 'up') {
+             newOrderA = newOrderB - 100;
+          } else {
+             newOrderA = newOrderB + 100; 
+          }
+      }
+      
+      storageService.updateListOrder(listA.id, newOrderA);
+      storageService.updateListOrder(listB.id, newOrderB);
   };
 
   const handleListUpdate = (updatedList: GroceryListType) => {
@@ -171,6 +202,7 @@ const App: React.FC = () => {
                 onCreateList={handleCreateList}
                 onEditList={handleEditList}
                 onDeleteList={handleDeleteList}
+                onMoveList={handleMoveList}
             />
         )}
 
@@ -178,6 +210,7 @@ const App: React.FC = () => {
             <div className="bg-white rounded-xl shadow-lg border border-slate-100 overflow-hidden h-full">
                 <GroceryList 
                     list={selectedList}
+                    currentUser={currentUser}
                     onBack={handleBack}
                     onUpdate={handleListUpdate}
                 />

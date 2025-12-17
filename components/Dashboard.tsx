@@ -1,19 +1,26 @@
 import React, { useState } from 'react';
 import { GroceryList, User } from '../types';
-import { IconPlus, IconTrash, IconEdit, IconCheck, IconX, IconUsers } from './Icons';
+import { IconPlus, IconTrash, IconEdit, IconCheck, IconX, IconUsers, IconChevronUp, IconChevronDown } from './Icons';
 
 interface DashboardProps {
   lists: GroceryList[];
   currentUser: User;
   onSelectKey: (listId: string) => void;
   onCreateList: (name: string, icon: string) => void;
-  onEditList: (listId: string, newName: string, newIcon: string) => void;
+  onEditList: (listId: string, newName: string, newIcon: string, newWebhookUrl: string) => void;
   onDeleteList: (listId: string) => void;
+  onMoveList: (listId: string, direction: 'up' | 'down') => void;
 }
 
-const EMOJI_OPTIONS = ['🛒', '🥬', '🥩', '🥖', '💊', '🎁', '🧹', '🎉', '🍼', '🏠', '🐶', '🛠️'];
+// Lista expandida de ícones
+const EMOJI_OPTIONS = [
+    '🛒', '🥬', '🥩', '🥖', '💊', '🎁', '🧹', '🎉', '🍼', '🏠', '🐶', '🛠️',
+    '🥕', '🍎', '🍌', '🥛', '🧀', '🍗', '🍳', '🍕', '🍔', '🍟', '🍦', '🍫',
+    '☕', '🍺', '🍷', '🧼', '🧻', '📚', '✏️', '💻', '🪴', '🌸', '🚗', '⛺',
+    '🏖️', '✈️', '🎮', '⚽', '🎨', '👗', '👔', '👠', '🕶️', '💍', '📦', '💡'
+];
 
-const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, onCreateList, onEditList, onDeleteList }) => {
+const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, onCreateList, onEditList, onDeleteList, onMoveList }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [newListName, setNewListName] = useState('');
   const [newListIcon, setNewListIcon] = useState(EMOJI_OPTIONS[0]);
@@ -22,6 +29,7 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editIcon, setEditIcon] = useState('');
+  const [editWebhook, setEditWebhook] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
   
   // Determine greeting based on time
@@ -62,6 +70,7 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
       setEditingId(list.id);
       setEditName(list.name);
       setEditIcon(list.icon);
+      setEditWebhook(list.webhookUrl || '');
       setDeletingId(null); // Close delete confirmation if open
   };
 
@@ -70,13 +79,15 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
       const currentList = lists.find(l => l.id === listId);
       const nameChanged = editName.trim() && editName !== currentList?.name;
       const iconChanged = editIcon !== currentList?.icon;
+      const webhookChanged = editWebhook !== (currentList?.webhookUrl || '');
 
-      if (nameChanged || iconChanged) {
-          onEditList(listId, editName.trim() || (currentList?.name || ''), editIcon);
+      if (nameChanged || iconChanged || webhookChanged) {
+          onEditList(listId, editName.trim() || (currentList?.name || ''), editIcon, editWebhook);
       }
       setEditingId(null);
       setEditName('');
       setEditIcon('');
+      setEditWebhook('');
   };
 
   const cancelEdit = (e: React.MouseEvent) => {
@@ -84,6 +95,7 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
       setEditingId(null);
       setEditName('');
       setEditIcon('');
+      setEditWebhook('');
   };
 
   // --- Delete Handlers ---
@@ -104,17 +116,20 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
       setDeletingId(null);
   };
 
+  const handleMove = (e: React.MouseEvent, listId: string, direction: 'up' | 'down') => {
+      e.stopPropagation();
+      onMoveList(listId, direction);
+  };
+
   return (
     <div className="space-y-6 pb-20">
-      {/* Header Reduced */}
+      {/* Header Reduced - Removed User Avatar Here */}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-xl font-bold text-slate-800">{greeting}, {currentUser.name}</h1>
           <p className="text-slate-500 text-xs">{listCountText}</p>
         </div>
-        <div className="w-10 h-10 rounded-full overflow-hidden shadow-md ring-2 ring-white">
-          <img src={currentUser.avatar} alt={currentUser.name} className="w-full h-full object-cover" />
-        </div>
+        {/* Avatar removed from here as requested, but kept in NavBar (App.tsx) */}
       </div>
 
       {/* Lists Grid Reduced */}
@@ -124,7 +139,7 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {lists.map((list) => {
+          {lists.map((list, index) => {
             const itemCount = list.items.length;
             const checkedCount = list.items.filter(i => i.checked).length;
             const progress = itemCount === 0 ? 0 : (checkedCount / itemCount) * 100;
@@ -134,6 +149,9 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
             // Check if user is owner or invited
             const isOwner = list.userId === currentUser.id;
             const isShared = list.sharedWith && list.sharedWith.length > 0;
+
+            const isFirst = index === 0;
+            const isLast = index === lists.length - 1;
 
             return (
               <div
@@ -149,14 +167,14 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
                        
                        {isEditing ? (
                          // Edit Mode Layout
-                         <div className="w-full space-y-2">
+                         <div className="w-full space-y-2 cursor-default" onClick={e => e.stopPropagation()}>
                             <div className="flex items-center space-x-2">
                                 <span className="text-2xl bg-slate-100 p-1 rounded cursor-default">{editIcon}</span>
                                 <input 
                                     type="text"
                                     value={editName}
                                     onChange={(e) => setEditName(e.target.value)}
-                                    onClick={(e) => e.stopPropagation()}
+                                    placeholder="Nome da lista"
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter') saveEdit(e, list.id);
                                         if (e.key === 'Escape') cancelEdit(e as any);
@@ -165,8 +183,21 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
                                     className="flex-1 bg-white border border-indigo-300 rounded px-2 py-1 text-base font-bold text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500"
                                 />
                             </div>
-                            <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
-                                <p className="text-[10px] uppercase font-bold text-slate-400 mb-1">Escolha um ícone:</p>
+                            
+                            {/* Webhook Input */}
+                            <div>
+                                <label className="text-[10px] font-bold text-slate-400 uppercase">Webhook (BotConversa)</label>
+                                <input 
+                                    type="text"
+                                    value={editWebhook}
+                                    onChange={(e) => setEditWebhook(e.target.value)}
+                                    placeholder="https://webhook.botconversa..."
+                                    className="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs text-slate-600 outline-none focus:ring-2 focus:ring-indigo-500"
+                                />
+                            </div>
+
+                            <div className="bg-slate-50 p-2 rounded-lg border border-slate-100 max-h-32 overflow-y-auto">
+                                <p className="text-[10px] uppercase font-bold text-slate-400 mb-1 sticky top-0 bg-slate-50">Ícone:</p>
                                 <div className="flex flex-wrap gap-1">
                                     {EMOJI_OPTIONS.map(emoji => (
                                         <button
@@ -229,7 +260,7 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
                    )}
                  </div>
 
-                 {/* Actions Footer Reduced */}
+                 {/* Actions Footer */}
                  <div className={`border-t p-1.5 flex justify-end space-x-1 transition-colors ${isDeleting ? 'bg-red-50 border-red-100' : 'bg-slate-50/50 border-slate-100'}`}>
                       
                       {isEditing ? (
@@ -266,22 +297,45 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
                               </div>
                           </div>
                       ) : (
-                          <>
-                            <button 
-                                onClick={(e) => startEdit(e, list)}
-                                className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white bg-transparent border border-transparent hover:border-slate-200 rounded transition-all"
-                                title="Editar Lista"
-                            >
-                                <IconEdit className="w-3.5 h-3.5" />
-                            </button>
-                            <button 
-                                onClick={(e) => startDelete(e, list.id)}
-                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-white bg-transparent border border-transparent hover:border-slate-200 rounded transition-all"
-                                title="Excluir Lista"
-                            >
-                                <IconTrash className="w-3.5 h-3.5" />
-                            </button>
-                          </>
+                          <div className="flex items-center justify-between w-full">
+                            {/* Reorder Buttons */}
+                            <div className="flex space-x-0.5">
+                                <button 
+                                    onClick={(e) => handleMove(e, list.id, 'up')}
+                                    disabled={isFirst}
+                                    className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white bg-transparent border border-transparent hover:border-slate-200 rounded transition-all disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-slate-400"
+                                    title="Mover para cima"
+                                >
+                                    <IconChevronUp className="w-3.5 h-3.5" />
+                                </button>
+                                <button 
+                                    onClick={(e) => handleMove(e, list.id, 'down')}
+                                    disabled={isLast}
+                                    className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white bg-transparent border border-transparent hover:border-slate-200 rounded transition-all disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-slate-400"
+                                    title="Mover para baixo"
+                                >
+                                    <IconChevronDown className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
+                            
+                            {/* Edit/Delete Buttons */}
+                            <div className="flex space-x-1">
+                                <button 
+                                    onClick={(e) => startEdit(e, list)}
+                                    className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white bg-transparent border border-transparent hover:border-slate-200 rounded transition-all"
+                                    title="Editar Lista"
+                                >
+                                    <IconEdit className="w-3.5 h-3.5" />
+                                </button>
+                                <button 
+                                    onClick={(e) => startDelete(e, list.id)}
+                                    className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-white bg-transparent border border-transparent hover:border-slate-200 rounded transition-all"
+                                    title="Excluir Lista"
+                                >
+                                    <IconTrash className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
+                          </div>
                       )}
                  </div>
               </div>
@@ -313,8 +367,8 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
                    />
                 </div>
 
-                <div className="mb-3">
-                     <p className="text-[10px] uppercase font-bold text-emerald-600/70 mb-1">Ícone:</p>
+                <div className="mb-3 flex-1 overflow-y-auto max-h-32">
+                     <p className="text-[10px] uppercase font-bold text-emerald-600/70 mb-1 sticky top-0 bg-emerald-50">Ícone:</p>
                      <div className="flex flex-wrap gap-1">
                          {EMOJI_OPTIONS.map(emoji => (
                              <button
