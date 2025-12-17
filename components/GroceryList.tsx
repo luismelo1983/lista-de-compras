@@ -13,6 +13,7 @@ interface GroceryListProps {
 
 const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, onUpdate }) => {
   const [newItemName, setNewItemName] = useState('');
+  const [newItemQuantity, setNewItemQuantity] = useState(''); // State for new item quantity
   const [isAdding, setIsAdding] = useState(false);
   const [suggestions, setSuggestions] = useState<GeminiSuggestion[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
@@ -20,6 +21,7 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
   // State for Editing Item
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
+  const [editingQuantity, setEditingQuantity] = useState(''); // State for editing quantity
 
   // State for Sharing Modal
   const [showShareModal, setShowShareModal] = useState(false);
@@ -59,6 +61,7 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
                 event: 'item_completed',
                 listName: list.name,
                 item: item.name,
+                quantity: item.quantity || 1,
                 category: item.category,
                 user: currentUser.name,
                 userEmail: currentUser.email,
@@ -80,7 +83,7 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
     }
   };
 
-  const addItem = (name: string, category: string = 'Geral') => {
+  const addItem = (name: string, category: string = 'Geral', quantity?: number) => {
     if (!name.trim()) return;
     
     const newItem: GroceryItem = {
@@ -88,6 +91,7 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
       name: name.trim(),
       checked: false,
       category,
+      quantity: quantity,
       createdAt: Date.now(),
     };
 
@@ -96,6 +100,7 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
     onUpdate(updatedList);
     storageService.saveList(updatedList);
     setNewItemName('');
+    setNewItemQuantity('');
     setIsAdding(false);
     scrollToTop();
   };
@@ -141,12 +146,14 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
   const startEditing = (item: GroceryItem) => {
     setEditingItemId(item.id);
     setEditingName(item.name);
+    setEditingQuantity(item.quantity ? item.quantity.toString() : '');
   };
 
   const saveEditing = () => {
     if (editingItemId && editingName.trim()) {
+      const parsedQty = editingQuantity ? parseFloat(editingQuantity) : undefined;
       const updatedItems = list.items.map(item => 
-        item.id === editingItemId ? { ...item, name: editingName.trim() } : item
+        item.id === editingItemId ? { ...item, name: editingName.trim(), quantity: parsedQty } : item
       );
       const updatedList = { ...list, items: updatedItems };
       onUpdate(updatedList);
@@ -154,6 +161,7 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
     }
     setEditingItemId(null);
     setEditingName('');
+    setEditingQuantity('');
   };
 
   const handleShare = async (e: React.FormEvent) => {
@@ -186,29 +194,36 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
   };
 
   const handleSmartAdd = async () => {
-    if (!newItemName.includes(',')) {
-        addItem(newItemName);
-        return;
-    }
-    setIsAdding(true);
-    const parsed = await geminiService.organizeRawInput(newItemName);
-    if (parsed.length > 0) {
-        const newItems = parsed.map(p => ({
-            id: `i${Date.now()}-${Math.random()}`,
-            name: p.name,
-            checked: false,
-            category: p.category,
-            createdAt: Date.now(),
-        }));
-        const updatedList = { ...list, items: [...newItems, ...list.items] };
-        onUpdate(updatedList);
-        storageService.saveList(updatedList);
-        setNewItemName('');
-        scrollToTop();
+    const qty = newItemQuantity ? parseFloat(newItemQuantity) : undefined;
+    
+    // Se usar vírgula, assume que é uma lista de itens colados e usa IA
+    if (newItemName.includes(',') && !newItemName.match(/^\d+,\d+$/)) { 
+        setIsAdding(true);
+        const parsed = await geminiService.organizeRawInput(newItemName);
+        if (parsed.length > 0) {
+            const newItems = parsed.map(p => ({
+                id: `i${Date.now()}-${Math.random()}`,
+                name: p.name,
+                checked: false,
+                category: p.category,
+                // IA não retorna quantidade separada ainda, então undefined
+                quantity: undefined, 
+                createdAt: Date.now(),
+            }));
+            const updatedList = { ...list, items: [...newItems, ...list.items] };
+            onUpdate(updatedList);
+            storageService.saveList(updatedList);
+            setNewItemName('');
+            setNewItemQuantity('');
+            scrollToTop();
+        } else {
+            addItem(newItemName, 'Geral', qty);
+        }
+        setIsAdding(false);
     } else {
-        addItem(newItemName);
+        // Adição simples
+        addItem(newItemName, 'Geral', qty);
     }
-    setIsAdding(false);
   };
 
   const ItemRow: React.FC<{ item: GroceryItem, index?: number, isLast?: boolean }> = ({ item, index, isLast }) => {
@@ -217,23 +232,34 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
 
     if (isEditing) {
       return (
-        <div className="bg-white p-2 rounded-lg border border-indigo-500 shadow-sm flex items-center gap-2">
+        <div className="bg-white p-2 rounded-lg border border-indigo-500 shadow-sm flex items-center gap-2 animate-in fade-in zoom-in duration-200">
+          <input 
+            type="number"
+            value={editingQuantity}
+            onChange={(e) => setEditingQuantity(e.target.value)}
+            className="w-16 px-2 py-1 bg-slate-50 border border-slate-200 rounded text-sm text-center font-bold text-indigo-600 outline-none focus:ring-2 focus:ring-indigo-500"
+            placeholder="#"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') saveEditing();
+              if (e.key === 'Escape') setEditingItemId(null);
+            }}
+          />
           <input 
             type="text"
             value={editingName}
             onChange={(e) => setEditingName(e.target.value)}
-            className="flex-1 outline-none text-slate-800 text-sm font-medium"
+            className="flex-1 outline-none text-slate-800 text-sm font-medium border-b border-transparent focus:border-indigo-200 pb-0.5 transition-colors"
             autoFocus
             onKeyDown={(e) => {
               if (e.key === 'Enter') saveEditing();
               if (e.key === 'Escape') setEditingItemId(null);
             }}
           />
-          <button onClick={saveEditing} className="p-1 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200">
-            <IconCheck className="w-3.5 h-3.5" />
+          <button onClick={saveEditing} className="p-1.5 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200">
+            <IconCheck className="w-4 h-4" />
           </button>
-          <button onClick={() => setEditingItemId(null)} className="p-1 text-slate-400 hover:text-slate-600">
-            <IconX className="w-3.5 h-3.5" />
+          <button onClick={() => setEditingItemId(null)} className="p-1.5 text-slate-400 hover:text-slate-600">
+            <IconX className="w-4 h-4" />
           </button>
         </div>
       );
@@ -250,7 +276,12 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
             >
                 <IconCheck className="w-3 h-3" />
             </button>
-            <div className="flex flex-col min-w-0">
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+                {item.quantity && item.quantity > 0 && (
+                  <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${item.checked ? 'bg-slate-200 text-slate-500' : 'bg-indigo-100 text-indigo-600'}`}>
+                    x{item.quantity}
+                  </span>
+                )}
                 <span className={`text-sm font-medium truncate ${item.checked ? 'line-through text-slate-400' : 'text-slate-800'}`}>
                     {item.name}
                 </span>
@@ -283,12 +314,14 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
               <button 
                   onClick={() => startEditing(item)}
                   className="p-1.5 text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 rounded transition-all"
+                  title="Editar (Nome ou Quantidade)"
               >
                   <IconEdit className="w-3.5 h-3.5" />
               </button>
               <button 
                   onClick={() => deleteItem(item.id)}
                   className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded transition-all"
+                  title="Excluir"
               >
                   <IconTrash className="w-3.5 h-3.5" />
               </button>
@@ -473,9 +506,16 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
         )}
       </div>
 
-      {/* Sticky Bottom Input Reduced */}
+      {/* Sticky Bottom Input with Quantity */}
       <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-3 pb-6 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
         <div className="max-w-3xl mx-auto flex items-center space-x-2">
+            <input 
+                type="number"
+                value={newItemQuantity}
+                onChange={(e) => setNewItemQuantity(e.target.value)}
+                placeholder="Qtd"
+                className="w-16 bg-slate-100 text-slate-900 placeholder-slate-400 px-2 py-2.5 rounded-lg text-sm font-semibold text-center focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
             <input
                 type="text"
                 value={newItemName}

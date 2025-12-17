@@ -11,6 +11,7 @@ export interface GroceryItem {
   name: string;
   checked: boolean;
   category?: string;
+  quantity?: number; // Novo campo numérico opcional
   createdAt: number;
 }
 
