@@ -1,18 +1,18 @@
+
 import React, { useState } from 'react';
-import { GroceryList, User } from '../types';
+import { GroceryList, User, Contact } from '../types';
 import { IconPlus, IconTrash, IconEdit, IconCheck, IconX, IconUsers, IconChevronUp, IconChevronDown } from './Icons';
 
 interface DashboardProps {
   lists: GroceryList[];
   currentUser: User;
   onSelectKey: (listId: string) => void;
-  onCreateList: (name: string, icon: string) => void;
-  onEditList: (listId: string, newName: string, newIcon: string, newWebhookUrl: string) => void;
+  onCreateList: (name: string, icon: string, contacts: Contact[]) => void;
+  onEditList: (listId: string, newName: string, newIcon: string, newWebhookUrl: string, newContacts: Contact[]) => void;
   onDeleteList: (listId: string) => void;
   onMoveList: (listId: string, direction: 'up' | 'down') => void;
 }
 
-// Lista expandida de ícones
 const EMOJI_OPTIONS = [
     '🛒', '🥬', '🥩', '🥖', '💊', '🎁', '🧹', '🎉', '🍼', '🏠', '🐶', '🛠️',
     '🥕', '🍎', '🍌', '🥛', '🧀', '🍗', '🍳', '🍕', '🍔', '🍟', '🍦', '🍫',
@@ -24,317 +24,132 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
   const [isCreating, setIsCreating] = useState(false);
   const [newListName, setNewListName] = useState('');
   const [newListIcon, setNewListIcon] = useState(EMOJI_OPTIONS[0]);
+  const [newContacts, setNewContacts] = useState<Contact[]>([]);
 
-  // States for Inline Editing and Deleting
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editIcon, setEditIcon] = useState('');
   const [editWebhook, setEditWebhook] = useState('');
+  const [editContacts, setEditContacts] = useState<Contact[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   
-  // Determine greeting based on time
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
 
-  // Determine list count text
-  let listCountText = '';
-  if (lists.length === 0) {
-      listCountText = 'Sem listas ativas';
-  } else if (lists.length === 1) {
-      listCountText = '1 lista ativa';
-  } else {
-      listCountText = `${lists.length} listas ativas`;
-  }
+  let listCountText = lists.length === 0 ? 'Sem listas ativas' : lists.length === 1 ? '1 lista ativa' : `${lists.length} listas ativas`;
 
-  // --- Create Handlers ---
   const handleCreateSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (newListName.trim()) {
-      onCreateList(newListName.trim(), newListIcon);
+      onCreateList(newListName.trim(), newListIcon, newContacts);
       setNewListName('');
       setNewListIcon(EMOJI_OPTIONS[0]);
+      setNewContacts([]);
       setIsCreating(false);
     }
   };
 
-  const cancelCreate = (e: React.MouseEvent) => {
-      e.stopPropagation();
-      setIsCreating(false);
-      setNewListName('');
-      setNewListIcon(EMOJI_OPTIONS[0]);
+  const addContact = (isEdit: boolean) => {
+    const newContact = { name: '', phone: '' };
+    if (isEdit) setEditContacts([...editContacts, newContact]);
+    else setNewContacts([...newContacts, newContact]);
   };
 
-  // --- Edit Handlers ---
+  const removeContact = (index: number, isEdit: boolean) => {
+    if (isEdit) setEditContacts(editContacts.filter((_, i) => i !== index));
+    else setNewContacts(newContacts.filter((_, i) => i !== index));
+  };
+
+  const updateContact = (index: number, field: 'name' | 'phone', value: string, isEdit: boolean) => {
+    const list = isEdit ? [...editContacts] : [...newContacts];
+    list[index][field] = value;
+    if (isEdit) setEditContacts(list);
+    else setNewContacts(list);
+  };
+
   const startEdit = (e: React.MouseEvent, list: GroceryList) => {
       e.stopPropagation();
       setEditingId(list.id);
       setEditName(list.name);
       setEditIcon(list.icon);
       setEditWebhook(list.webhookUrl || '');
-      setDeletingId(null); // Close delete confirmation if open
+      setEditContacts(list.contacts ? [...list.contacts] : []);
+      setDeletingId(null);
   };
 
   const saveEdit = (e: React.MouseEvent | React.KeyboardEvent, listId: string) => {
       e.stopPropagation();
-      const currentList = lists.find(l => l.id === listId);
-      const nameChanged = editName.trim() && editName !== currentList?.name;
-      const iconChanged = editIcon !== currentList?.icon;
-      const webhookChanged = editWebhook !== (currentList?.webhookUrl || '');
-
-      if (nameChanged || iconChanged || webhookChanged) {
-          onEditList(listId, editName.trim() || (currentList?.name || ''), editIcon, editWebhook);
-      }
+      onEditList(listId, editName.trim(), editIcon, editWebhook, editContacts);
       setEditingId(null);
-      setEditName('');
-      setEditIcon('');
-      setEditWebhook('');
-  };
-
-  const cancelEdit = (e: React.MouseEvent) => {
-      e.stopPropagation();
-      setEditingId(null);
-      setEditName('');
-      setEditIcon('');
-      setEditWebhook('');
-  };
-
-  // --- Delete Handlers ---
-  const startDelete = (e: React.MouseEvent, listId: string) => {
-      e.stopPropagation();
-      setDeletingId(listId);
-      setEditingId(null); // Close edit if open
-  };
-
-  const confirmDelete = (e: React.MouseEvent, listId: string) => {
-      e.stopPropagation();
-      onDeleteList(listId);
-      setDeletingId(null);
-  };
-
-  const cancelDelete = (e: React.MouseEvent) => {
-      e.stopPropagation();
-      setDeletingId(null);
-  };
-
-  const handleMove = (e: React.MouseEvent, listId: string, direction: 'up' | 'down') => {
-      e.stopPropagation();
-      onMoveList(listId, direction);
   };
 
   return (
     <div className="space-y-6 pb-20">
-      {/* Header Reduced - Removed User Avatar Here */}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-xl font-bold text-slate-800">{greeting}, {currentUser.name}</h1>
           <p className="text-slate-500 text-xs">{listCountText}</p>
         </div>
-        {/* Avatar removed from here as requested, but kept in NavBar (App.tsx) */}
       </div>
 
-      {/* Lists Grid Reduced */}
       <div>
-        <div className="flex justify-between items-end mb-3">
-          <h2 className="text-base font-bold text-slate-800">Suas Listas</h2>
-        </div>
-        
+        <h2 className="text-base font-bold text-slate-800 mb-3">Suas Listas</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {lists.map((list, index) => {
-            const itemCount = list.items.length;
-            const checkedCount = list.items.filter(i => i.checked).length;
-            const progress = itemCount === 0 ? 0 : (checkedCount / itemCount) * 100;
             const isEditing = editingId === list.id;
             const isDeleting = deletingId === list.id;
-            
-            // Check if user is owner or invited
             const isOwner = list.userId === currentUser.id;
-            const isShared = list.sharedWith && list.sharedWith.length > 0;
-
-            const isFirst = index === 0;
-            const isLast = index === lists.length - 1;
+            const progress = list.items.length === 0 ? 0 : (list.items.filter(i => i.checked).length / list.items.length) * 100;
 
             return (
-              <div
-                key={list.id}
-                className={`group bg-white hover:bg-slate-50 transition-all duration-200 rounded-xl shadow-sm border ${isDeleting ? 'border-red-200 bg-red-50' : 'border-slate-100'} relative overflow-hidden flex flex-col`}
-                onClick={() => !isEditing && !isDeleting && onSelectKey(list.id)}
-              >
-                 <div className={`absolute top-0 left-0 w-1 h-full ${list.color}`}></div> {/* Color strip */}
-                 
+              <div key={list.id} className={`group bg-white rounded-xl shadow-sm border ${isDeleting ? 'border-red-200 bg-red-50' : 'border-slate-100'} relative overflow-hidden flex flex-col`} onClick={() => !isEditing && !isDeleting && onSelectKey(list.id)}>
+                 <div className={`absolute top-0 left-0 w-1 h-full ${list.color}`}></div>
                  <div className="p-4 flex-1 cursor-pointer">
-                   <div className="flex justify-between items-start mb-2">
-                     <div className="flex flex-col w-full">
-                       
-                       {isEditing ? (
-                         // Edit Mode Layout
-                         <div className="w-full space-y-2 cursor-default" onClick={e => e.stopPropagation()}>
-                            <div className="flex items-center space-x-2">
-                                <span className="text-2xl bg-slate-100 p-1 rounded cursor-default">{editIcon}</span>
-                                <input 
-                                    type="text"
-                                    value={editName}
-                                    onChange={(e) => setEditName(e.target.value)}
-                                    placeholder="Nome da lista"
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter') saveEdit(e, list.id);
-                                        if (e.key === 'Escape') cancelEdit(e as any);
-                                    }}
-                                    autoFocus
-                                    className="flex-1 bg-white border border-indigo-300 rounded px-2 py-1 text-base font-bold text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500"
-                                />
-                            </div>
-                            
-                            {/* Webhook Input */}
-                            <div>
-                                <label className="text-[10px] font-bold text-slate-400 uppercase">Webhook (BotConversa)</label>
-                                <input 
-                                    type="text"
-                                    value={editWebhook}
-                                    onChange={(e) => setEditWebhook(e.target.value)}
-                                    placeholder="https://webhook.botconversa..."
-                                    className="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs text-slate-600 outline-none focus:ring-2 focus:ring-indigo-500"
-                                />
-                            </div>
-
-                            <div className="bg-slate-50 p-2 rounded-lg border border-slate-100 max-h-32 overflow-y-auto">
-                                <p className="text-[10px] uppercase font-bold text-slate-400 mb-1 sticky top-0 bg-slate-50">Ícone:</p>
-                                <div className="flex flex-wrap gap-1">
-                                    {EMOJI_OPTIONS.map(emoji => (
-                                        <button
-                                            key={emoji}
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setEditIcon(emoji);
-                                            }}
-                                            className={`w-7 h-7 flex items-center justify-center rounded-md text-base transition-colors ${editIcon === emoji ? 'bg-indigo-100 ring-2 ring-indigo-400' : 'bg-white hover:bg-slate-200'}`}
-                                        >
-                                            {emoji}
-                                        </button>
-                                    ))}
+                   {isEditing ? (
+                     <div className="w-full space-y-3 cursor-default" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center space-x-2">
+                            <span className="text-2xl bg-slate-100 p-1 rounded">{editIcon}</span>
+                            <input type="text" value={editName} onChange={e => setEditName(e.target.value)} className="flex-1 bg-white border border-indigo-300 rounded px-2 py-1 text-sm font-bold" />
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-bold text-slate-400 uppercase">Webhook (BotConversa)</label>
+                            <input type="text" value={editWebhook} onChange={e => setEditWebhook(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs" />
+                        </div>
+                        <div className="space-y-2">
+                            <div className="flex justify-between items-center"><label className="text-[10px] font-bold text-slate-400 uppercase">Contatos Interessados</label><button onClick={() => addContact(true)} className="text-indigo-600 text-[10px] font-bold">+ Adicionar</button></div>
+                            {editContacts.map((c, i) => (
+                                <div key={i} className="flex gap-1">
+                                    <input placeholder="Nome" value={c.name} onChange={e => updateContact(i, 'name', e.target.value, true)} className="w-1/2 text-xs border border-slate-200 rounded px-1.5 py-1" />
+                                    <input placeholder="Tel (DDD+Número)" value={c.phone} onChange={e => updateContact(i, 'phone', e.target.value, true)} className="w-1/2 text-xs border border-slate-200 rounded px-1.5 py-1" />
+                                    <button onClick={() => removeContact(i, true)} className="text-red-400"><IconX className="w-3 h-3"/></button>
                                 </div>
-                            </div>
-                         </div>
-                       ) : (
-                         // View Mode Layout
-                         <div className="flex items-center space-x-3 w-full">
-                           <span className="text-2xl">{list.icon}</span>
-                           <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                    <h3 className="font-bold text-slate-800 text-base leading-tight group-hover:text-emerald-600 transition-colors truncate">
-                                        {list.name}
-                                    </h3>
-                                    {!isOwner && (
-                                        <span className="text-[10px] bg-indigo-100 text-indigo-700 px-1 py-0 rounded font-bold border border-indigo-200">
-                                            {list.ownerName || 'Outro'}
-                                        </span>
-                                    )}
-                                </div>
-                                <div className="flex items-center text-[11px] text-slate-400 mt-0.5">
-                                    <span>{itemCount} itens</span>
-                                    {(isShared || !isOwner) && (
-                                        <span className="flex items-center ml-2 text-indigo-400">
-                                            <IconUsers className="w-3 h-3 mr-1" />
-                                            Grupo
-                                        </span>
-                                    )}
-                                </div>
-                           </div>
-                         </div>
-                       )}
+                            ))}
+                        </div>
                      </div>
-                   </div>
-
+                   ) : (
+                     <div className="flex items-center space-x-3 w-full">
+                       <span className="text-2xl">{list.icon}</span>
+                       <div className="flex-1 min-w-0">
+                            <h3 className="font-bold text-slate-800 text-base leading-tight truncate">{list.name}</h3>
+                            <div className="text-[11px] text-slate-400">{list.items.length} itens • {list.contacts?.length || 0} contatos</div>
+                       </div>
+                     </div>
+                   )}
                    {!isEditing && (
-                       <div className="space-y-1.5 mt-1">
-                         <div className="flex justify-between text-[10px] text-slate-500 font-medium">
-                           <span>{checkedCount} / {itemCount}</span>
-                           <span>{Math.round(progress)}%</span>
-                         </div>
-                         <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                           <div 
-                              className={`h-full rounded-full transition-all duration-500 ${progress === 100 ? 'bg-emerald-500' : 'bg-slate-800'}`} 
-                              style={{ width: `${progress}%` }}
-                           ></div>
-                         </div>
+                       <div className="mt-3 space-y-1">
+                          <div className="w-full bg-slate-100 h-1 rounded-full overflow-hidden"><div className="bg-slate-800 h-full transition-all" style={{width:`${progress}%`}}></div></div>
                        </div>
                    )}
                  </div>
-
-                 {/* Actions Footer */}
-                 <div className={`border-t p-1.5 flex justify-end space-x-1 transition-colors ${isDeleting ? 'bg-red-50 border-red-100' : 'bg-slate-50/50 border-slate-100'}`}>
-                      
+                 <div className="border-t p-1.5 flex justify-end bg-slate-50/50 border-slate-100">
                       {isEditing ? (
-                          <>
-                            <button 
-                                onClick={cancelEdit}
-                                className="px-2 py-1 text-[10px] font-semibold text-slate-500 bg-white border border-slate-200 rounded hover:bg-slate-100"
-                            >
-                                Cancelar
-                            </button>
-                            <button 
-                                onClick={(e) => saveEdit(e, list.id)}
-                                className="px-2 py-1 text-[10px] font-semibold text-white bg-indigo-600 border border-indigo-600 rounded hover:bg-indigo-700 flex items-center gap-1"
-                            >
-                                <IconCheck className="w-3 h-3" /> Salvar
-                            </button>
-                          </>
+                          <div className="flex space-x-2"><button onClick={() => setEditingId(null)} className="px-2 py-1 text-[10px] font-bold text-slate-500">Cancelar</button><button onClick={e => saveEdit(e, list.id)} className="px-2 py-1 text-[10px] font-bold text-white bg-indigo-600 rounded">Salvar</button></div>
                       ) : isDeleting ? (
-                          <div className="flex items-center w-full justify-between px-1">
-                              <span className="text-[10px] font-bold text-red-600">Excluir?</span>
-                              <div className="flex space-x-2">
-                                <button 
-                                    onClick={cancelDelete}
-                                    className="px-2 py-1 text-[10px] font-semibold text-slate-600 bg-white border border-slate-200 rounded hover:bg-slate-100"
-                                >
-                                    Não
-                                </button>
-                                <button 
-                                    onClick={(e) => confirmDelete(e, list.id)}
-                                    className="px-2 py-1 text-[10px] font-semibold text-white bg-red-600 border border-red-600 rounded hover:bg-red-700 shadow-sm"
-                                >
-                                    Sim
-                                </button>
-                              </div>
-                          </div>
+                          <div className="flex justify-between w-full px-2 items-center"><span className="text-[10px] font-bold text-red-600">Excluir?</span><div className="flex space-x-2"><button onClick={e => {e.stopPropagation(); setDeletingId(null)}} className="px-2 py-1 text-[10px]">Não</button><button onClick={e => {e.stopPropagation(); onDeleteList(list.id)}} className="px-2 py-1 text-[10px] bg-red-600 text-white rounded">Sim</button></div></div>
                       ) : (
-                          <div className="flex items-center justify-between w-full">
-                            {/* Reorder Buttons */}
-                            <div className="flex space-x-0.5">
-                                <button 
-                                    onClick={(e) => handleMove(e, list.id, 'up')}
-                                    disabled={isFirst}
-                                    className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white bg-transparent border border-transparent hover:border-slate-200 rounded transition-all disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-slate-400"
-                                    title="Mover para cima"
-                                >
-                                    <IconChevronUp className="w-3.5 h-3.5" />
-                                </button>
-                                <button 
-                                    onClick={(e) => handleMove(e, list.id, 'down')}
-                                    disabled={isLast}
-                                    className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white bg-transparent border border-transparent hover:border-slate-200 rounded transition-all disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-slate-400"
-                                    title="Mover para baixo"
-                                >
-                                    <IconChevronDown className="w-3.5 h-3.5" />
-                                </button>
-                            </div>
-                            
-                            {/* Edit/Delete Buttons */}
-                            <div className="flex space-x-1">
-                                <button 
-                                    onClick={(e) => startEdit(e, list)}
-                                    className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white bg-transparent border border-transparent hover:border-slate-200 rounded transition-all"
-                                    title="Editar Lista"
-                                >
-                                    <IconEdit className="w-3.5 h-3.5" />
-                                </button>
-                                <button 
-                                    onClick={(e) => startDelete(e, list.id)}
-                                    className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-white bg-transparent border border-transparent hover:border-slate-200 rounded transition-all"
-                                    title="Excluir Lista"
-                                >
-                                    <IconTrash className="w-3.5 h-3.5" />
-                                </button>
-                            </div>
+                          <div className="flex justify-between w-full">
+                            <div className="flex"><button onClick={e => {e.stopPropagation(); onMoveList(list.id, 'up')}} className="p-1 text-slate-400 hover:text-indigo-600"><IconChevronUp className="w-3 h-3"/></button><button onClick={e => {e.stopPropagation(); onMoveList(list.id, 'down')}} className="p-1 text-slate-400 hover:text-indigo-600"><IconChevronDown className="w-3 h-3"/></button></div>
+                            <div className="flex"><button onClick={e => startEdit(e, list)} className="p-1 text-slate-400 hover:text-indigo-600"><IconEdit className="w-3 h-3"/></button><button onClick={e => {e.stopPropagation(); setDeletingId(list.id)}} className="p-1 text-slate-400 hover:text-red-500"><IconTrash className="w-3 h-3"/></button></div>
                           </div>
                       )}
                  </div>
@@ -342,76 +157,25 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
             );
           })}
 
-          {/* Create New List Card Reduced */}
           {isCreating ? (
-             <div className="flex flex-col p-4 rounded-xl border-2 border-emerald-400 bg-emerald-50 h-full min-h-[140px] relative shadow-lg">
-                <label className="text-[10px] font-bold text-emerald-700 uppercase mb-2">Nova Lista</label>
-                
-                <div className="flex items-center space-x-2 mb-2">
-                   <div className="text-2xl bg-white p-1 rounded-lg border border-emerald-100 shadow-sm">{newListIcon}</div>
-                   <input 
-                      autoFocus
-                      type="text"
-                      value={newListName}
-                      onChange={(e) => setNewListName(e.target.value)}
-                      onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleCreateSubmit();
-                          if (e.key === 'Escape') {
-                            setIsCreating(false);
-                            setNewListName('');
-                            setNewListIcon(EMOJI_OPTIONS[0]);
-                          }
-                      }}
-                      className="w-full bg-white border border-emerald-200 rounded-lg px-3 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm"
-                      placeholder="Nome da lista..."
-                   />
+             <div className="flex flex-col p-4 rounded-xl border-2 border-emerald-400 bg-emerald-50 relative">
+                <input autoFocus type="text" value={newListName} onChange={e => setNewListName(e.target.value)} className="w-full border-emerald-200 rounded px-2 py-1.5 text-sm mb-2" placeholder="Nome da lista..." />
+                <div className="space-y-2 mb-3">
+                    <div className="flex justify-between items-center"><span className="text-[10px] font-bold text-emerald-700 uppercase">Contatos para Aviso</span><button onClick={() => addContact(false)} className="text-emerald-700 text-[10px] font-bold">+ Novo</button></div>
+                    {newContacts.map((c, i) => (
+                        <div key={i} className="flex gap-1">
+                            <input placeholder="Nome" value={c.name} onChange={e => updateContact(i, 'name', e.target.value, false)} className="w-1/2 text-[10px] border border-emerald-100 rounded px-1 py-1" />
+                            <input placeholder="Tel" value={c.phone} onChange={e => updateContact(i, 'phone', e.target.value, false)} className="w-1/2 text-[10px] border border-emerald-100 rounded px-1 py-1" />
+                            <button onClick={() => removeContact(i, false)} className="text-red-400"><IconX className="w-2.5 h-2.5"/></button>
+                        </div>
+                    ))}
                 </div>
-
-                <div className="mb-3 flex-1 overflow-y-auto max-h-32">
-                     <p className="text-[10px] uppercase font-bold text-emerald-600/70 mb-1 sticky top-0 bg-emerald-50">Ícone:</p>
-                     <div className="flex flex-wrap gap-1">
-                         {EMOJI_OPTIONS.map(emoji => (
-                             <button
-                                 key={emoji}
-                                 onClick={(e) => {
-                                     e.stopPropagation();
-                                     setNewListIcon(emoji);
-                                 }}
-                                 className={`w-7 h-7 flex items-center justify-center rounded text-base transition-colors ${newListIcon === emoji ? 'bg-emerald-200 ring-2 ring-emerald-500 text-emerald-900' : 'bg-white/80 hover:bg-white'}`}
-                             >
-                                 {emoji}
-                             </button>
-                         ))}
-                     </div>
-                </div>
-
-                <div className="flex justify-end space-x-2 mt-auto">
-                    <button 
-                        onClick={cancelCreate}
-                        className="p-1.5 text-emerald-600 hover:bg-emerald-100 rounded transition-colors"
-                        title="Cancelar"
-                    >
-                        <IconX className="w-4 h-4" />
-                    </button>
-                    <button 
-                        onClick={() => handleCreateSubmit()}
-                        disabled={!newListName.trim()}
-                        className="p-1.5 bg-emerald-600 text-white rounded hover:bg-emerald-700 shadow-sm disabled:opacity-50 disabled:shadow-none transition-all"
-                        title="Criar Lista"
-                    >
-                        <IconCheck className="w-4 h-4" />
-                    </button>
-                </div>
+                <div className="flex justify-end space-x-2 mt-auto"><button onClick={() => setIsCreating(false)} className="p-1 text-emerald-600"><IconX className="w-4 h-4" /></button><button onClick={handleCreateSubmit} disabled={!newListName.trim()} className="bg-emerald-600 text-white px-3 py-1 rounded text-xs font-bold">Criar</button></div>
             </div>
           ) : (
-            <button
-              onClick={() => setIsCreating(true)}
-              className="flex flex-col items-center justify-center p-4 rounded-xl border-2 border-dashed border-slate-200 hover:border-emerald-400 hover:bg-emerald-50 transition-all duration-200 group h-full min-h-[140px]"
-            >
-              <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 mb-2 group-hover:scale-110 transition-transform shadow-sm">
-                <IconPlus className="w-5 h-5" />
-              </div>
-              <span className="font-semibold text-sm text-slate-600 group-hover:text-emerald-700">Criar Nova Lista</span>
+            <button onClick={() => setIsCreating(true)} className="flex flex-col items-center justify-center p-4 rounded-xl border-2 border-dashed border-slate-200 hover:border-emerald-400 hover:bg-emerald-50 transition-all h-full min-h-[120px]">
+              <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 mb-1"><IconPlus className="w-4 h-4" /></div>
+              <span className="font-semibold text-xs text-slate-500">Nova Lista</span>
             </button>
           )}
         </div>

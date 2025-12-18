@@ -1,3 +1,4 @@
+
 import { 
     signInWithEmailAndPassword, 
     createUserWithEmailAndPassword, 
@@ -21,9 +22,7 @@ import {
     arrayRemove
   } from 'firebase/firestore';
   import { auth, db } from './firebase';
-  import { GroceryList, User } from '../types';
-  
-  // --- Auth Management ---
+  import { GroceryList, User, Contact } from '../types';
   
   const mapUser = (fbUser: FirebaseUser): User => {
       const seed = fbUser.displayName || fbUser.email || 'User';
@@ -83,19 +82,14 @@ import {
     }
   };
   
-  // --- Firestore List Management ---
-  
-  // Subscribe to lists owned by user AND lists shared with user
   export const subscribeToLists = (user: User, onUpdate: (lists: GroceryList[]) => void) => {
       const ownedLists: GroceryList[] = [];
       const sharedLists: GroceryList[] = [];
       
       const pushUpdates = () => {
-          // Merge arrays and deduplicate by ID
           const combined = [...ownedLists, ...sharedLists];
           const uniqueLists = Array.from(new Map(combined.map(item => [item.id, item])).values());
           
-          // Sort client-side by custom 'order' field, fallback to creation time
           uniqueLists.sort((a, b) => {
               const orderA = a.order ?? a.createdAt ?? 0;
               const orderB = b.order ?? b.createdAt ?? 0;
@@ -104,14 +98,9 @@ import {
           onUpdate(uniqueLists);
       };
 
-      // Query 1: Lists I own
-      const qOwned = query(
-          collection(db, 'lists'), 
-          where('userId', '==', user.id)
-      );
-  
+      const qOwned = query(collection(db, 'lists'), where('userId', '==', user.id));
       const unsubOwned = onSnapshot(qOwned, (snapshot) => {
-          ownedLists.length = 0; // Clear array
+          ownedLists.length = 0;
           snapshot.forEach((doc) => {
               const data = doc.data();
               ownedLists.push({
@@ -121,6 +110,7 @@ import {
                   ownerName: data.ownerName,
                   sharedWith: data.sharedWith || [],
                   webhookUrl: data.webhookUrl || '',
+                  contacts: data.contacts || [],
                   color: data.color || 'bg-blue-100',
                   icon: data.icon || '📝',
                   items: data.items || [],
@@ -131,15 +121,9 @@ import {
           pushUpdates();
       });
 
-      // Query 2: Lists shared with me (only if I have an email)
       let unsubShared = () => {};
-      
       if (user.email) {
-          const qShared = query(
-              collection(db, 'lists'),
-              where('sharedWith', 'array-contains', user.email)
-          );
-          
+          const qShared = query(collection(db, 'lists'), where('sharedWith', 'array-contains', user.email));
           unsubShared = onSnapshot(qShared, (snapshot) => {
               sharedLists.length = 0;
               snapshot.forEach((doc) => {
@@ -151,7 +135,8 @@ import {
                       ownerName: data.ownerName,
                       sharedWith: data.sharedWith || [],
                       webhookUrl: data.webhookUrl || '',
-                      color: data.color || 'bg-indigo-100', // Visually distinct
+                      contacts: data.contacts || [],
+                      color: data.color || 'bg-indigo-100',
                       icon: data.icon || '📝',
                       items: data.items || [],
                       order: data.order,
@@ -168,7 +153,7 @@ import {
       };
   };
   
-  export const createList = async (name: string, icon: string, user: User): Promise<void> => {
+  export const createList = async (name: string, icon: string, user: User, contacts: Contact[] = []): Promise<void> => {
       await addDoc(collection(db, 'lists'), {
           name,
           userId: user.id,
@@ -177,7 +162,8 @@ import {
           color: 'bg-blue-100',
           icon: icon || '📝',
           items: [],
-          order: Date.now(), // Default order based on timestamp (puts new lists at bottom initially)
+          contacts,
+          order: Date.now(),
           createdAt: serverTimestamp()
       });
   };
@@ -187,7 +173,8 @@ import {
       await updateDoc(listRef, {
           name: updatedList.name,
           icon: updatedList.icon,
-          items: updatedList.items
+          items: updatedList.items,
+          contacts: updatedList.contacts || []
       });
   };
 
@@ -198,11 +185,12 @@ import {
       });
   };
   
-  export const updateListMetadata = async (listId: string, name: string, icon?: string, webhookUrl?: string): Promise<void> => {
+  export const updateListMetadata = async (listId: string, name: string, icon?: string, webhookUrl?: string, contacts?: Contact[]): Promise<void> => {
       const listRef = doc(db, 'lists', listId);
       const updates: any = { name };
       if (icon) updates.icon = icon;
       if (webhookUrl !== undefined) updates.webhookUrl = webhookUrl;
+      if (contacts !== undefined) updates.contacts = contacts;
       await updateDoc(listRef, updates);
   };
   

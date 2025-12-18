@@ -1,9 +1,15 @@
+
 export interface User {
   id: string;
   name: string;
-  email: string; // Adicionado para convites
+  email: string;
   avatar: string;
   color: string;
+}
+
+export interface Contact {
+  name: string;
+  phone: string;
 }
 
 export interface GroceryItem {
@@ -11,7 +17,7 @@ export interface GroceryItem {
   name: string;
   checked: boolean;
   category?: string;
-  quantity?: number; // Novo campo numérico opcional
+  quantity?: number;
   createdAt: number;
 }
 
@@ -22,11 +28,12 @@ export interface GroceryList {
   color: string;
   icon: string;
   createdAt?: number;
-  order?: number; // Campo para ordenação personalizada
-  userId: string; // ID do dono
-  ownerName?: string; // Nome do dono para exibição
-  sharedWith?: string[]; // Array de emails com acesso
-  webhookUrl?: string; // URL para integração (BotConversa, Zapier, etc)
+  order?: number;
+  userId: string;
+  ownerName?: string;
+  sharedWith?: string[];
+  webhookUrl?: string;
+  contacts?: Contact[]; // Contatos para notificação via BotConversa
 }
 
 export enum ViewState {
