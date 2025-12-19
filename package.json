@@ -1,13 +1,13 @@
 {
   "name": "lista-de-compras",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "deploy:firebase": "npm run build && firebase deploy --only hosting"
+    "deploy:firebase": "npm run build && firebase use default && firebase deploy"
   },
   "dependencies": {
     "react": "^19.2.3",
