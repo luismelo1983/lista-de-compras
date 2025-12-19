@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { GeminiSuggestion } from "../types";
 
@@ -5,7 +6,8 @@ const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const generateSmartSuggestions = async (existingItems: string[]): Promise<GeminiSuggestion[]> => {
   try {
-    const model = 'gemini-2.5-flash';
+    // Update model to gemini-3-flash-preview for basic text tasks
+    const model = 'gemini-3-flash-preview';
     const prompt = `
       Eu tenho uma lista de compras com os seguintes itens: ${existingItems.join(', ')}.
       Com base nesta lista, sugira 5 itens que são comumente comprados junto com estes ou que podem estar faltando para um plano de refeições completo.
@@ -45,7 +47,8 @@ export const generateSmartSuggestions = async (existingItems: string[]): Promise
 
 export const organizeRawInput = async (rawInput: string): Promise<{ name: string; category: string }[]> => {
   try {
-    const model = 'gemini-2.5-flash';
+    // Update model to gemini-3-flash-preview for basic text tasks
+    const model = 'gemini-3-flash-preview';
     const prompt = `
       Analise o texto de entrada de compras bruto a seguir e transforme em uma lista estruturada de itens.
       A entrada pode ser confusa, como "leite ovos e 2 kg de carne".
