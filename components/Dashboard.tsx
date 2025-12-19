@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import { GroceryList, User, Contact } from '../types';
-import { IconPlus, IconTrash, IconEdit, IconCheck, IconX, IconChevronUp, IconChevronDown } from './Icons';
+import { IconPlus, IconTrash, IconEdit, IconCheck, IconX, IconChevronUp, IconChevronDown, IconUsers } from './Icons';
 
 interface DashboardProps {
   lists: GroceryList[];
@@ -58,46 +57,102 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
 
   return (
     <div className="space-y-6 pb-20">
-      <div>
-        <h1 className="text-xl font-bold text-slate-800">{greeting}, {currentUser.name}</h1>
-        <p className="text-slate-500 text-xs">{lists.length} listas ativas</p>
+      <div className="flex justify-between items-end">
+        <div>
+          <h1 className="text-2xl font-black text-slate-800 tracking-tight">{greeting}, {currentUser.name.split(' ')[0]}!</h1>
+          <p className="text-slate-500 text-xs font-medium uppercase tracking-wider">Você tem {lists.length} listas ativas</p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {lists.map((list) => {
           const isEditing = editingId === list.id;
           const isDeleting = deletingId === list.id;
+          const isShared = list.userId !== currentUser.id;
           const progress = list.items.length === 0 ? 0 : (list.items.filter(i => i.checked).length / list.items.length) * 100;
 
           return (
-            <div key={list.id} className={`bg-white rounded-xl shadow-sm border ${isDeleting ? 'border-red-200 bg-red-50' : 'border-slate-100'} relative overflow-hidden flex flex-col`} onClick={() => !isEditing && !isDeleting && onSelectKey(list.id)}>
-               <div className="p-4 flex-1 cursor-pointer">
+            <div 
+              key={list.id} 
+              className={`group bg-white rounded-2xl shadow-sm border ${isDeleting ? 'border-red-200 bg-red-50' : 'border-slate-100'} transition-all hover:shadow-md relative overflow-hidden flex flex-col`} 
+              onClick={() => !isEditing && !isDeleting && onSelectKey(list.id)}
+            >
+               {isShared && (
+                 <div className="absolute top-0 right-0 bg-indigo-500 text-white text-[9px] font-black px-2 py-0.5 rounded-bl-lg flex items-center gap-1 uppercase z-10">
+                   <IconUsers className="w-2.5 h-2.5" /> Compartilhada
+                 </div>
+               )}
+
+               <div className="p-5 flex-1 cursor-pointer">
                  {isEditing ? (
-                   <div className="flex items-center space-x-2" onClick={e => e.stopPropagation()}>
-                      <input type="text" value={editName} onChange={e => setEditName(e.target.value)} className="flex-1 bg-white border border-indigo-300 rounded px-2 py-1 text-sm font-bold" />
+                   <div className="space-y-3" onClick={e => e.stopPropagation()}>
+                      <div className="flex gap-2">
+                        <select 
+                          value={editIcon} 
+                          onChange={e => setEditIcon(e.target.value)}
+                          className="bg-slate-50 border border-slate-200 rounded-lg p-2 text-xl"
+                        >
+                          {EMOJI_OPTIONS.map(emoji => <option key={emoji} value={emoji}>{emoji}</option>)}
+                        </select>
+                        <input 
+                          type="text" 
+                          value={editName} 
+                          onChange={e => setEditName(e.target.value)} 
+                          className="flex-1 bg-white border border-indigo-300 rounded-lg px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none" 
+                        />
+                      </div>
                    </div>
                  ) : (
-                   <div className="flex items-center space-x-3 w-full">
-                     <span className="text-2xl">{list.icon}</span>
+                   <div className="flex items-start space-x-4 w-full">
+                     <div className="bg-slate-50 w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shadow-inner group-hover:scale-110 transition-transform">
+                        {list.icon}
+                     </div>
                      <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-slate-800 text-base leading-tight truncate">{list.name}</h3>
-                        <div className="text-[11px] text-slate-400">{list.items.length} itens</div>
+                        <h3 className="font-bold text-slate-800 text-lg leading-tight truncate">{list.name}</h3>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-tighter">{list.items.length} itens</span>
+                          {isShared && <span className="text-[10px] text-indigo-400 font-medium italic truncate max-w-[120px]">por {list.ownerName}</span>}
+                        </div>
                      </div>
                    </div>
                  )}
                  {!isEditing && (
-                    <div className="mt-3 w-full bg-slate-100 h-1 rounded-full overflow-hidden"><div className="bg-slate-800 h-full transition-all" style={{width:`${progress}%`}}></div></div>
+                    <div className="mt-5">
+                      <div className="flex justify-between text-[10px] font-bold text-slate-400 mb-1 uppercase">
+                        <span>Progresso</span>
+                        <span>{Math.round(progress)}%</span>
+                      </div>
+                      <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                        <div className="bg-indigo-600 h-full transition-all duration-500 ease-out" style={{width:`${progress}%`}}></div>
+                      </div>
+                    </div>
                  )}
                </div>
-               <div className="border-t p-1.5 flex justify-end bg-slate-50/50 border-slate-100">
+
+               <div className="px-4 py-2 border-t flex justify-between items-center bg-slate-50/30 border-slate-100">
                     {isEditing ? (
-                        <div className="flex space-x-2"><button onClick={() => setEditingId(null)} className="px-2 py-1 text-[10px] font-bold text-slate-500">Cancelar</button><button onClick={e => saveEdit(e, list)} className="px-2 py-1 text-[10px] font-bold text-white bg-indigo-600 rounded">Salvar</button></div>
+                        <div className="flex space-x-2 w-full">
+                          <button onClick={() => setEditingId(null)} className="flex-1 py-1.5 text-[10px] font-bold text-slate-500 bg-white border rounded-lg hover:bg-slate-50 transition-colors uppercase">Cancelar</button>
+                          <button onClick={e => saveEdit(e, list)} className="flex-1 py-1.5 text-[10px] font-bold text-white bg-indigo-600 rounded-lg shadow-sm hover:bg-indigo-700 transition-colors uppercase">Salvar</button>
+                        </div>
                     ) : isDeleting ? (
-                        <div className="flex justify-between w-full px-2 items-center"><span className="text-[10px] font-bold text-red-600">Excluir?</span><div className="flex space-x-2"><button onClick={e => {e.stopPropagation(); setDeletingId(null)}} className="px-2 py-1 text-[10px]">Não</button><button onClick={e => {e.stopPropagation(); onDeleteList(list.id)}} className="px-2 py-1 text-[10px] bg-red-600 text-white rounded">Sim</button></div></div>
+                        <div className="flex justify-between w-full items-center">
+                          <span className="text-[10px] font-black text-red-600 uppercase tracking-widest">Excluir lista?</span>
+                          <div className="flex space-x-2">
+                            <button onClick={e => {e.stopPropagation(); setDeletingId(null)}} className="px-3 py-1 text-[10px] font-bold text-slate-500 bg-white border rounded-lg">NÃO</button>
+                            <button onClick={e => {e.stopPropagation(); onDeleteList(list.id)}} className="px-3 py-1 text-[10px] font-bold bg-red-600 text-white rounded-lg shadow-sm">SIM, EXCLUIR</button>
+                          </div>
+                        </div>
                     ) : (
                         <div className="flex justify-between w-full">
-                          <div className="flex"><button onClick={e => {e.stopPropagation(); onMoveList(list.id, 'up')}} className="p-1 text-slate-400"><IconChevronUp className="w-3 h-3"/></button><button onClick={e => {e.stopPropagation(); onMoveList(list.id, 'down')}} className="p-1 text-slate-400"><IconChevronDown className="w-3 h-3"/></button></div>
-                          <div className="flex"><button onClick={e => startEdit(e, list)} className="p-1 text-slate-400"><IconEdit className="w-3 h-3"/></button><button onClick={e => {e.stopPropagation(); setDeletingId(list.id)}} className="p-1 text-slate-400"><IconTrash className="w-3 h-3"/></button></div>
+                          <div className="flex gap-1">
+                            <button onClick={e => {e.stopPropagation(); onMoveList(list.id, 'up')}} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-md transition-all"><IconChevronUp className="w-3.5 h-3.5"/></button>
+                            <button onClick={e => {e.stopPropagation(); onMoveList(list.id, 'down')}} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-md transition-all"><IconChevronDown className="w-3.5 h-3.5"/></button>
+                          </div>
+                          <div className="flex gap-1">
+                            <button onClick={e => startEdit(e, list)} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-md transition-all"><IconEdit className="w-3.5 h-3.5"/></button>
+                            <button onClick={e => {e.stopPropagation(); setDeletingId(list.id)}} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-white rounded-md transition-all"><IconTrash className="w-3.5 h-3.5"/></button>
+                          </div>
                         </div>
                     )}
                </div>
@@ -106,14 +161,45 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
         })}
 
         {isCreating ? (
-           <div className="flex flex-col p-4 rounded-xl border-2 border-emerald-400 bg-emerald-50">
-              <input autoFocus type="text" value={newListName} onChange={e => setNewListName(e.target.value)} className="w-full border-emerald-200 rounded px-2 py-1.5 text-sm mb-2" placeholder="Nome da lista..." />
-              <div className="flex justify-end space-x-2 mt-auto"><button onClick={() => setIsCreating(false)} className="p-1 text-emerald-600"><IconX className="w-4 h-4" /></button><button onClick={handleCreateSubmit} disabled={!newListName.trim()} className="bg-emerald-600 text-white px-3 py-1 rounded text-xs font-bold">Criar</button></div>
+           <div className="flex flex-col p-5 rounded-2xl border-2 border-indigo-400 bg-indigo-50 shadow-lg animate-in zoom-in-95">
+              <div className="flex gap-2 mb-4">
+                <select 
+                  value={newListIcon} 
+                  onChange={e => setNewListIcon(e.target.value)}
+                  className="bg-white border border-indigo-200 rounded-xl p-2 text-2xl outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  {EMOJI_OPTIONS.map(emoji => <option key={emoji} value={emoji}>{emoji}</option>)}
+                </select>
+                <input 
+                  autoFocus 
+                  type="text" 
+                  value={newListName} 
+                  onChange={e => setNewListName(e.target.value)} 
+                  className="flex-1 border-indigo-200 rounded-xl px-4 py-2 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none" 
+                  placeholder="Nome da lista..." 
+                  onKeyDown={e => e.key === 'Enter' && handleCreateSubmit()}
+                />
+              </div>
+              <div className="flex justify-end space-x-2">
+                <button onClick={() => setIsCreating(false)} className="px-4 py-2 text-xs font-bold text-indigo-600 hover:bg-indigo-100 rounded-lg transition-colors">CANCELAR</button>
+                <button 
+                  onClick={handleCreateSubmit} 
+                  disabled={!newListName.trim()} 
+                  className="bg-indigo-600 text-white px-6 py-2 rounded-xl text-xs font-black shadow-lg shadow-indigo-200 disabled:opacity-50 transition-all active:scale-95"
+                >
+                  CRIAR LISTA
+                </button>
+              </div>
           </div>
         ) : (
-          <button onClick={() => setIsCreating(true)} className="flex flex-col items-center justify-center p-4 rounded-xl border-2 border-dashed border-slate-200 hover:border-emerald-400 hover:bg-emerald-50 transition-all h-full min-h-[100px]">
-            <IconPlus className="w-4 h-4 text-emerald-600" />
-            <span className="font-semibold text-xs text-slate-500">Nova Lista</span>
+          <button 
+            onClick={() => setIsCreating(true)} 
+            className="flex flex-col items-center justify-center p-6 rounded-2xl border-2 border-dashed border-slate-200 text-slate-400 hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-600 transition-all h-full min-h-[140px] group"
+          >
+            <div className="w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center mb-2 group-hover:bg-indigo-100 transition-colors">
+              <IconPlus className="w-6 h-6" />
+            </div>
+            <span className="font-black text-xs uppercase tracking-widest">Nova Lista</span>
           </button>
         )}
       </div>

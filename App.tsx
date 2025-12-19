@@ -8,7 +8,7 @@ import * as storageService from './services/storageService';
 import { User, GroceryList as GroceryListType, ViewState, Contact } from './types';
 import { IconShoppingBag, IconLogout } from './components/Icons';
 
-const APP_VERSION = "0.3.1"; // Versão incrementada
+const APP_VERSION = "0.4.3"; 
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -35,29 +35,30 @@ const App: React.FC = () => {
     return () => unsubscribeAuth();
   }, []);
 
-  // PWA: Verificação forçada de Service Worker
+  // PWA: Detecção de nova versão
   useEffect(() => {
     if ('serviceWorker' in navigator) {
       const checkUpdate = async () => {
-          const registration = await navigator.serviceWorker.getRegistration();
-          if (registration) {
-              registration.update(); // Força o browser a checar se há novo service worker
-              registration.onupdatefound = () => {
-                  const installingWorker = registration.installing;
-                  if (installingWorker) {
-                      installingWorker.onstatechange = () => {
-                          if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                              setNewVersionAvailable(true);
-                          }
-                      };
-                  }
-              };
+        const registration = await navigator.serviceWorker.getRegistration();
+        if (registration) {
+          registration.update();
+          if (registration.waiting) {
+            setNewVersionAvailable(true);
           }
+          registration.onupdatefound = () => {
+            const installingWorker = registration.installing;
+            if (installingWorker) {
+              installingWorker.onstatechange = () => {
+                if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  setNewVersionAvailable(true);
+                }
+              };
+            }
+          };
+        }
       };
       checkUpdate();
-      
-      // Checar a cada 5 minutos
-      const interval = setInterval(checkUpdate, 5 * 60 * 1000);
+      const interval = setInterval(checkUpdate, 60000); 
       return () => clearInterval(interval);
     }
   }, []);
@@ -92,14 +93,14 @@ const App: React.FC = () => {
   };
 
   const forceRefresh = () => {
-      if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.getRegistrations().then(regs => {
-              regs.forEach(reg => reg.unregister());
-              window.location.reload();
-          });
-      } else {
-          window.location.reload();
-      }
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(regs => {
+        regs.forEach(reg => reg.unregister());
+        window.location.href = window.location.origin + '?v=' + Date.now();
+      });
+    } else {
+      window.location.reload();
+    }
   };
 
   if (initializing) return <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-400 text-sm">Iniciando...</div>;
@@ -110,27 +111,26 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
       
-      {/* Banner de Atualização */}
       {newVersionAvailable && (
-          <div className="fixed top-0 left-0 right-0 z-[100] bg-indigo-600 text-white p-3 text-center text-xs font-bold flex items-center justify-center gap-4 shadow-xl">
-              🚀 Nova versão disponível (v{APP_VERSION})!
-              <button onClick={forceRefresh} className="bg-white text-indigo-600 px-4 py-1.5 rounded-full shadow-lg">Atualizar Agora</button>
+          <div className="fixed top-0 left-0 right-0 z-[100] bg-indigo-600 text-white p-3 text-center text-[10px] font-black flex items-center justify-center gap-4 shadow-xl border-b border-white/20 uppercase tracking-tighter">
+              🚀 Nova versão disponível!
+              <button onClick={forceRefresh} className="bg-white text-indigo-600 px-4 py-1.5 rounded-full shadow-lg font-black active:scale-95 transition-all">ATUALIZAR</button>
           </div>
       )}
 
       <nav className="bg-white border-b border-slate-200 sticky top-0 z-50">
         <div className="max-w-5xl mx-auto px-3 h-14 flex items-center justify-between">
             <div className="flex items-center space-x-2 cursor-pointer" onClick={() => navigateTo(ViewState.DASHBOARD)}>
-                <div className="bg-indigo-600 p-1.5 rounded-lg text-white"><IconShoppingBag className="w-4 h-4" /></div>
+                <div className="bg-indigo-600 p-1.5 rounded-lg text-white shadow-md shadow-indigo-100"><IconShoppingBag className="w-4 h-4" /></div>
                 <span className="font-extrabold text-lg tracking-tight text-slate-800">Lista</span>
             </div>
 
             <div className="flex items-center space-x-3">
-               <button onClick={() => navigateTo(ViewState.PROFILE)} className="flex items-center space-x-2 bg-slate-50 pl-1 pr-2 py-1 rounded-full border border-slate-100">
-                    <img src={currentUser.avatar} alt={currentUser.name} className="w-7 h-7 rounded-full object-cover"/>
-                    <span className="text-xs font-medium text-slate-600 hidden md:block">{currentUser.name}</span>
+               <button onClick={() => navigateTo(ViewState.PROFILE)} className="flex items-center space-x-2 bg-slate-50 pl-1 pr-2 py-1 rounded-full border border-slate-100 active:bg-slate-100 transition-colors">
+                    <img src={currentUser.avatar} alt={currentUser.name} className="w-7 h-7 rounded-full object-cover shadow-sm"/>
+                    <span className="text-xs font-bold text-slate-600 hidden md:block">{currentUser.name}</span>
                </button>
-               <button onClick={() => storageService.logout()} className="text-slate-400 p-1.5"><IconLogout className="w-4 h-4" /></button>
+               <button onClick={() => storageService.logout()} className="text-slate-400 p-1.5 hover:text-red-500 transition-colors"><IconLogout className="w-4 h-4" /></button>
             </div>
         </div>
       </nav>
@@ -140,13 +140,13 @@ const App: React.FC = () => {
             <Dashboard 
                 lists={lists} currentUser={currentUser}
                 onSelectKey={(id) => navigateTo(ViewState.LIST_DETAIL, id)}
-                onCreateList={storageService.createList} 
+                onCreateList={(name, icon) => storageService.createList(name, icon, currentUser)} 
                 onEditList={storageService.updateListMetadata}
                 onDeleteList={storageService.deleteList} onMoveList={handleMoveList}
             />
         )}
         {currentView === ViewState.LIST_DETAIL && selectedList && (
-            <div className="bg-white rounded-xl shadow-lg border border-slate-100 overflow-hidden h-full">
+            <div className="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden h-full">
                 <GroceryList list={selectedList} currentUser={currentUser} onBack={handleBack} onUpdate={storageService.saveList} />
             </div>
         )}
