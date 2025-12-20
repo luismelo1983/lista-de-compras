@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { User } from '../types';
 import * as storageService from '../services/storageService';
@@ -43,16 +42,21 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onBack }) => {
   };
 
   const handleForceUpdate = () => {
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(regs => {
-            regs.forEach(reg => reg.unregister());
-            alert("Cache limpo. O app será reiniciado.");
-            // Fix: window.location.reload() expected 0 arguments
-            window.location.reload();
-        });
-    } else {
-        // Fix: window.location.reload() expected 0 arguments
-        window.location.reload();
+    try {
+      if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(regs => {
+              regs.forEach(reg => reg.unregister());
+              alert("Cache limpo. O app será reiniciado.");
+              window.location.reload();
+          }).catch(err => {
+              console.error("Erro ao desregistrar SW:", err);
+              window.location.reload();
+          });
+      } else {
+          window.location.reload();
+      }
+    } catch (e) {
+      window.location.reload();
     }
   };
 
