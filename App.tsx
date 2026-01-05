@@ -7,7 +7,7 @@ import * as storageService from './services/storageService';
 import { User, GroceryList as GroceryListType, ViewState, Contact } from './types';
 import { IconShoppingBag, IconLogout } from './components/Icons';
 
-const APP_VERSION = "0.4.7"; 
+const APP_VERSION = "0.4.8"; 
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -36,10 +36,12 @@ const App: React.FC = () => {
 
   // PWA: Detecção de nova versão com bypass para ambientes de preview
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+    // O check window.self === window.top evita que o SW tente registrar dentro do iframe do AI Studio
+    const isInsideIframe = window.self !== window.top;
+    
+    if (!isInsideIframe && typeof window !== 'undefined' && 'serviceWorker' in navigator) {
       const checkUpdate = async () => {
         try {
-          // Se estiver em iframe ou origem diferente, getRegistration() pode lançar erro ou falhar
           const registration = await navigator.serviceWorker.getRegistration().catch(() => null);
           
           if (registration) {
@@ -59,7 +61,7 @@ const App: React.FC = () => {
             };
           }
         } catch (err) {
-          // Ignora erros de Service Worker no preview
+          // Silencia erros residuais
         }
       };
       
@@ -124,7 +126,7 @@ const App: React.FC = () => {
     }
   };
 
-  if (initializing) return <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-400 text-sm font-bold">CARREGANDO...</div>;
+  if (initializing) return <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-400 text-sm font-bold uppercase tracking-widest">Iniciando...</div>;
   if (!currentUser) return <Auth onLoginSuccess={() => {}} />;
 
   const selectedList = lists.find(l => l.id === selectedListId);
@@ -143,13 +145,13 @@ const App: React.FC = () => {
         <div className="max-w-5xl mx-auto px-4 h-full flex items-center justify-between">
             <div className="flex items-center space-x-2 cursor-pointer group" onClick={() => navigateTo(ViewState.DASHBOARD)}>
                 <div className="bg-indigo-600 p-1.5 rounded-lg text-white shadow-md shadow-indigo-100 group-hover:scale-105 transition-transform"><IconShoppingBag className="w-4 h-4" /></div>
-                <span className="font-black text-lg tracking-tight text-slate-800">Lista</span>
+                <span className="font-black text-lg tracking-tight text-slate-800">FamilyCart</span>
             </div>
 
             <div className="flex items-center space-x-3">
                <button onClick={() => navigateTo(ViewState.PROFILE)} className="flex items-center space-x-2 bg-slate-50 pl-1 pr-2 py-1 rounded-full border border-slate-100 active:bg-slate-100 hover:border-slate-300 transition-all">
                     <img src={currentUser.avatar} alt={currentUser.name} className="w-7 h-7 rounded-full object-cover shadow-sm"/>
-                    <span className="text-xs font-bold text-slate-600 hidden md:block">{currentUser.name}</span>
+                    <span className="text-xs font-bold text-slate-600 hidden md:block">{currentUser.name.split(' ')[0]}</span>
                </button>
                <button onClick={() => storageService.logout()} className="text-slate-400 p-1.5 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"><IconLogout className="w-4 h-4" /></button>
             </div>

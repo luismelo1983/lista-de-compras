@@ -10,11 +10,11 @@ export default defineConfig(({ mode }) => {
       react(),
       VitePWA({
         registerType: 'autoUpdate',
-        // Adicionando icon.svg aos assets que devem ser cacheados
+        injectRegister: false, // Desabilita injeção automática para evitar erro no iframe do preview
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg', 'icon.svg'],
         manifest: {
           name: 'Lista de Compras Inteligente',
-          short_name: 'ListaCompras',
+          short_name: 'FamilyCart',
           description: 'Gerencie suas compras em família com inteligência artificial.',
           theme_color: '#4f46e5',
           background_color: '#f8fafc',
@@ -23,13 +23,13 @@ export default defineConfig(({ mode }) => {
           start_url: '/',
           icons: [
             {
-              src: '/icon.svg', // Apontando para o arquivo físico
+              src: '/icon.svg',
               sizes: 'any',
               type: 'image/svg+xml',
               purpose: 'any maskable'
             },
             {
-              src: '/icon.svg', // Repetindo para garantir tamanhos maiores em Androids que suportam SVG
+              src: '/icon.svg',
               sizes: '512x512',
               type: 'image/svg+xml',
               purpose: 'any maskable'
