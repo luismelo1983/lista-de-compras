@@ -1,3 +1,4 @@
+
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
@@ -10,11 +11,11 @@ export default defineConfig(({ mode }) => {
       react(),
       VitePWA({
         registerType: 'autoUpdate',
-        injectRegister: false, // Desabilita injeção automática para evitar erro no iframe do preview
+        injectRegister: false,
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg', 'icon.svg'],
         manifest: {
-          name: 'Lista de Compras Inteligente',
-          short_name: 'FamilyCart',
+          name: 'aLista - Lista Inteligente',
+          short_name: 'aLista',
           description: 'Gerencie suas compras em família com inteligência artificial.',
           theme_color: '#4f46e5',
           background_color: '#f8fafc',

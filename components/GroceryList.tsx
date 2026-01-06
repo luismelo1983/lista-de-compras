@@ -18,18 +18,16 @@ interface GroceryListProps {
 
 const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, onUpdate }) => {
   const [newItemName, setNewItemName] = useState('');
-  const [newItemQuantity, setNewItemQuantity] = useState('');
+  const [newItemQuantity, setNewItemQuantity] = useState('1');
   const [suggestions, setSuggestions] = useState<GeminiSuggestion[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'config' | 'members'>('config');
   
-  // Smart Import
   const [isSmartImportOpen, setIsSmartImportOpen] = useState(false);
   const [smartInput, setSmartInput] = useState('');
   const [isImporting, setIsImporting] = useState(false);
 
-  // Temp states for editing
   const [shareEmail, setShareEmail] = useState('');
 
   const activeItems = (list.items || []).filter(i => !i.checked);
@@ -43,18 +41,19 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
 
   const addItem = (name: string, category: string = 'Geral', quantity?: number) => {
     if (!name.trim()) return;
+    const qty = quantity || 1;
     const newItem: GroceryItem = { 
       id: `i${Date.now() + Math.random()}`, 
       name: name.trim(), 
       checked: false, 
       category, 
-      quantity: quantity || 1, 
+      quantity: qty, 
       createdAt: Date.now() 
     };
     const updatedList = { ...list, items: [newItem, ...list.items] };
     onUpdate(updatedList);
     setNewItemName('');
-    setNewItemQuantity('');
+    setNewItemQuantity('1');
   };
 
   const deleteItem = (itemId: string) => {
@@ -73,6 +72,7 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
           name: it.name,
           checked: false,
           category: it.category,
+          quantity: 1, // IA por padrão assume 1 se não extraído explicitamente na string de nome
           createdAt: Date.now()
         }));
         const updatedList = { ...list, items: [...newItems, ...list.items] };
@@ -130,20 +130,30 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        {/* Input Manual */}
-        <div className="flex gap-2 bg-slate-50 p-2 rounded-xl border border-slate-100">
+        {/* Input Manual com Quantidade */}
+        <div className="flex gap-2 bg-slate-50 p-2 rounded-xl border border-slate-100 items-center shadow-inner">
+          <div className="flex items-center gap-1 border-r border-slate-200 pr-2">
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter mr-1">Qtd</span>
+            <input 
+              type="number" 
+              className="w-10 bg-white border border-slate-200 rounded-lg text-xs font-bold text-center py-1.5 outline-none focus:ring-2 focus:ring-indigo-500"
+              value={newItemQuantity}
+              onChange={e => setNewItemQuantity(e.target.value)}
+              min="1"
+            />
+          </div>
           <input 
             type="text" 
-            placeholder="Adicionar item..." 
-            className="flex-1 bg-transparent border-none outline-none text-sm px-2"
+            placeholder="O que comprar?" 
+            className="flex-1 bg-transparent border-none outline-none text-sm px-2 font-medium"
             value={newItemName}
             onChange={e => setNewItemName(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && addItem(newItemName)}
+            onKeyDown={e => e.key === 'Enter' && addItem(newItemName, 'Geral', parseInt(newItemQuantity) || 1)}
           />
           <button 
-            onClick={() => addItem(newItemName)}
+            onClick={() => addItem(newItemName, 'Geral', parseInt(newItemQuantity) || 1)}
             disabled={!newItemName.trim()}
-            className="bg-indigo-600 text-white p-2 rounded-lg shadow-sm disabled:opacity-50"
+            className="bg-indigo-600 text-white p-2 rounded-lg shadow-md disabled:opacity-50 active:scale-90 transition-transform"
           >
             <IconPlus className="w-4 h-4" />
           </button>
@@ -151,17 +161,23 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
 
         {/* Lista Ativa */}
         <div className="space-y-2">
-          <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Para Comprar</h2>
+          <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex justify-between items-center">
+            <span>Para Comprar</span>
+            <span className="bg-slate-100 px-2 py-0.5 rounded-full">{activeItems.length}</span>
+          </h2>
           {activeItems.length === 0 ? (
-            <div className="text-center py-8 text-slate-400 italic text-sm">Lista vazia. Tente a Importação Mágica!</div>
+            <div className="text-center py-8 text-slate-400 italic text-sm">Lista vazia. Comece a preencher!</div>
           ) : (
             activeItems.map(item => (
               <div key={item.id} className="group flex items-center gap-3 p-3 bg-white border border-slate-100 rounded-xl hover:border-indigo-200 transition-colors shadow-sm">
-                <button onClick={() => toggleItem(item)} className="w-6 h-6 border-2 border-slate-200 rounded-full flex items-center justify-center hover:border-indigo-500">
+                <button onClick={() => toggleItem(item)} className="w-6 h-6 border-2 border-slate-200 rounded-full flex items-center justify-center hover:border-indigo-500 bg-white">
                 </button>
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-slate-700">{item.name}</p>
-                  {item.category && <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded uppercase font-bold">{item.category}</span>}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-slate-700 truncate">
+                    {item.quantity && item.quantity > 1 && <span className="text-indigo-600 font-black mr-1.5 bg-indigo-50 px-1.5 py-0.5 rounded text-[10px]">{item.quantity}x</span>}
+                    {item.name}
+                  </p>
+                  {item.category && item.category !== 'Geral' && <span className="text-[9px] text-slate-400 uppercase font-bold tracking-widest">{item.category}</span>}
                 </div>
                 <button onClick={() => deleteItem(item.id)} className="opacity-0 group-hover:opacity-100 p-2 text-slate-300 hover:text-red-500 transition-all">
                   <IconTrash className="w-4 h-4" />
@@ -179,18 +195,18 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
             className="w-full py-3 border-2 border-dashed border-indigo-100 rounded-xl flex items-center justify-center gap-2 text-indigo-600 font-bold text-xs hover:bg-indigo-50 transition-colors"
           >
             <IconSparkles className={`w-4 h-4 ${loadingSuggestions ? 'animate-pulse' : ''}`} />
-            {loadingSuggestions ? 'Gerando sugestões...' : 'Sugerir itens com IA'}
+            {loadingSuggestions ? 'IA Pensando...' : 'Sugerir itens inteligentes'}
           </button>
           
           {suggestions.length > 0 && (
             <div className="mt-3 grid grid-cols-1 gap-2">
               {suggestions.map((s, idx) => (
-                <div key={idx} className="bg-indigo-50 p-3 rounded-xl border border-indigo-100 flex items-center justify-between">
+                <div key={idx} className="bg-indigo-50 p-3 rounded-xl border border-indigo-100 flex items-center justify-between animate-in slide-in-from-top-2">
                   <div className="flex-1">
                     <p className="text-xs font-bold text-indigo-900">{s.name}</p>
-                    <p className="text-[10px] text-indigo-600 italic">{s.reason}</p>
+                    <p className="text-[10px] text-indigo-600/70 italic leading-tight">{s.reason}</p>
                   </div>
-                  <button onClick={() => { addItem(s.name, s.category); setSuggestions(s => s.filter((_, i) => i !== idx)); }} className="bg-indigo-600 text-white p-1.5 rounded-lg">
+                  <button onClick={() => { addItem(s.name, s.category); setSuggestions(s => s.filter((_, i) => i !== idx)); }} className="bg-indigo-600 text-white p-1.5 rounded-lg shadow-sm">
                     <IconPlus className="w-3 h-3" />
                   </button>
                 </div>
@@ -202,13 +218,22 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
         {/* Lista Comprada */}
         {completedItems.length > 0 && (
           <div className="space-y-2 pt-6">
-            <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Carrinho</h2>
+            <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex justify-between">
+              <span>No Carrinho</span>
+              <span>{completedItems.length}</span>
+            </h2>
             {completedItems.map(item => (
               <div key={item.id} className="flex items-center gap-3 p-3 bg-slate-50 border border-transparent rounded-xl opacity-60">
-                <button onClick={() => toggleItem(item)} className="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center">
+                <button onClick={() => toggleItem(item)} className="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center shadow-sm">
                   <IconCheck className="w-3 h-3 text-white" />
                 </button>
-                <p className="text-sm line-through text-slate-500">{item.name}</p>
+                <p className="text-sm line-through text-slate-500 flex-1">
+                    {item.quantity && item.quantity > 1 && <span className="mr-1">{item.quantity}x</span>}
+                    {item.name}
+                </p>
+                <button onClick={() => deleteItem(item.id)} className="p-2 text-slate-300 hover:text-red-400">
+                    <IconTrash className="w-4 h-4" />
+                </button>
               </div>
             ))}
           </div>
@@ -227,7 +252,7 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
               <button onClick={() => setIsSmartImportOpen(false)}><IconX className="w-5 h-5" /></button>
             </div>
             <div className="p-5 space-y-4">
-              <p className="text-xs text-slate-500">Cole uma mensagem do WhatsApp ou escreva o que precisa. A IA vai organizar tudo por categorias automaticamente.</p>
+              <p className="text-xs text-slate-500">Cole uma mensagem do WhatsApp ou escreva o que precisa. O aLista vai organizar tudo por categorias automaticamente.</p>
               <textarea 
                 className="w-full h-32 p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                 placeholder="Ex: preciso de 2kg de carne, leite, ovos e sabão em pó"
@@ -240,7 +265,7 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
                 className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold text-sm shadow-lg shadow-indigo-100 flex items-center justify-center gap-2"
               >
                 {isImporting ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <IconSparkles className="w-4 h-4" />}
-                Processar com IA
+                Organizar com IA
               </button>
             </div>
           </div>
@@ -250,43 +275,51 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
       {/* Modal Configurações / Membros */}
       {isSettingsOpen && (
         <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="flex border-b">
-              <button onClick={() => setActiveTab('config')} className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest ${activeTab === 'config' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-slate-400'}`}>Configurações</button>
-              <button onClick={() => setActiveTab('members')} className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest ${activeTab === 'members' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-slate-400'}`}>Membros</button>
+              <button onClick={() => setActiveTab('config')} className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest transition-colors ${activeTab === 'config' ? 'text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50/30' : 'text-slate-400 hover:bg-slate-50'}`}>Configurações</button>
+              <button onClick={() => setActiveTab('members')} className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest transition-colors ${activeTab === 'members' ? 'text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50/30' : 'text-slate-400 hover:bg-slate-50'}`}>Membros</button>
             </div>
 
             <div className="p-5 max-h-[70vh] overflow-y-auto">
               {activeTab === 'config' ? (
                 <div className="space-y-4">
-                   <p className="text-xs text-slate-500">Ajustes gerais para a lista <strong>{list.name}</strong>.</p>
-                   {/* Aqui você pode adicionar edição de ícone ou Webhooks no futuro */}
-                   <button onClick={() => setIsSettingsOpen(false)} className="w-full bg-slate-100 py-2.5 rounded-lg text-sm font-bold text-slate-600">Fechar</button>
+                   <p className="text-xs text-slate-500">Ajustes da lista <strong>{list.name}</strong>.</p>
+                   <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                      <p className="text-[10px] font-black text-slate-400 uppercase mb-2">Dono da Lista</p>
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 bg-indigo-600 rounded-full flex items-center justify-center text-[10px] text-white font-bold">{list.ownerName?.charAt(0)}</div>
+                        <span className="text-sm font-bold text-slate-700">{list.ownerName}</span>
+                      </div>
+                   </div>
+                   <button onClick={() => setIsSettingsOpen(false)} className="w-full bg-slate-100 py-3 rounded-xl text-xs font-black text-slate-500 hover:bg-slate-200 transition-colors uppercase">Fechar</button>
                 </div>
               ) : (
                 <div className="space-y-4">
                    <div className="flex gap-2">
                       <input 
                         type="email" 
-                        placeholder="E-mail da família..." 
-                        className="flex-1 px-3 py-2 bg-slate-50 border rounded-lg text-sm"
+                        placeholder="E-mail do familiar..." 
+                        className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                         value={shareEmail}
                         onChange={e => setShareEmail(e.target.value)}
                       />
-                      <button onClick={handleAddShare} className="bg-indigo-600 text-white p-2 rounded-lg"><IconPlus className="w-4 h-4"/></button>
+                      <button onClick={handleAddShare} className="bg-indigo-600 text-white p-2.5 rounded-xl shadow-md"><IconPlus className="w-4 h-4"/></button>
                    </div>
                    <div className="space-y-2">
-                      <div className="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
-                        <span className="text-xs font-bold text-slate-600">{list.ownerName} (Dono)</span>
+                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Quem tem acesso</h4>
+                      <div className="flex items-center justify-between p-3 bg-indigo-50 border border-indigo-100 rounded-xl">
+                        <span className="text-xs font-bold text-indigo-900">{list.ownerName} (Dono)</span>
+                        <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
                       </div>
                       {list.sharedWith?.map(email => (
-                        <div key={email} className="flex items-center justify-between p-2 border border-slate-100 rounded-lg">
-                          <span className="text-xs text-slate-600">{email}</span>
-                          <button onClick={() => handleRemoveShare(email)} className="text-red-400 p-1"><IconTrash className="w-3 h-3"/></button>
+                        <div key={email} className="flex items-center justify-between p-3 border border-slate-100 rounded-xl animate-in fade-in duration-300">
+                          <span className="text-xs text-slate-600 font-medium">{email}</span>
+                          <button onClick={() => handleRemoveShare(email)} className="text-slate-300 hover:text-red-500 p-1 transition-colors"><IconTrash className="w-3.5 h-3.5"/></button>
                         </div>
                       ))}
                    </div>
-                   <button onClick={() => setIsSettingsOpen(false)} className="w-full bg-slate-100 py-2.5 rounded-lg text-sm font-bold text-slate-600 mt-4">Fechar</button>
+                   <button onClick={() => setIsSettingsOpen(false)} className="w-full bg-slate-100 py-3 rounded-xl text-xs font-black text-slate-500 hover:bg-slate-200 transition-colors uppercase mt-4">Fechar</button>
                 </div>
               )}
             </div>

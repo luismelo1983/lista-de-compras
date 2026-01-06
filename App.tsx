@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Dashboard from './components/Dashboard';
 import GroceryList from './components/GroceryList';
@@ -7,7 +8,7 @@ import * as storageService from './services/storageService';
 import { User, GroceryList as GroceryListType, ViewState, Contact } from './types';
 import { IconShoppingBag, IconLogout } from './components/Icons';
 
-const APP_VERSION = "0.4.8"; 
+const APP_VERSION = "0.5.0"; 
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -34,21 +35,16 @@ const App: React.FC = () => {
     return () => unsubscribeAuth();
   }, []);
 
-  // PWA: Detecção de nova versão com bypass para ambientes de preview
   useEffect(() => {
-    // O check window.self === window.top evita que o SW tente registrar dentro do iframe do AI Studio
     const isInsideIframe = window.self !== window.top;
     
     if (!isInsideIframe && typeof window !== 'undefined' && 'serviceWorker' in navigator) {
       const checkUpdate = async () => {
         try {
           const registration = await navigator.serviceWorker.getRegistration().catch(() => null);
-          
           if (registration) {
             registration.update();
-            if (registration.waiting) {
-              setNewVersionAvailable(true);
-            }
+            if (registration.waiting) setNewVersionAvailable(true);
             registration.onupdatefound = () => {
               const installingWorker = registration.installing;
               if (installingWorker) {
@@ -60,11 +56,8 @@ const App: React.FC = () => {
               }
             };
           }
-        } catch (err) {
-          // Silencia erros residuais
-        }
+        } catch (err) {}
       };
-      
       checkUpdate();
       const interval = setInterval(checkUpdate, 300000); 
       return () => clearInterval(interval);
@@ -118,12 +111,8 @@ const App: React.FC = () => {
       navigator.serviceWorker.getRegistrations().then(regs => {
         regs.forEach(reg => reg.unregister());
         window.location.reload();
-      }).catch(() => {
-        window.location.reload();
-      });
-    } else {
-      window.location.reload();
-    }
+      }).catch(() => window.location.reload());
+    } else window.location.reload();
   };
 
   if (initializing) return <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-400 text-sm font-bold uppercase tracking-widest">Iniciando...</div>;
@@ -145,7 +134,7 @@ const App: React.FC = () => {
         <div className="max-w-5xl mx-auto px-4 h-full flex items-center justify-between">
             <div className="flex items-center space-x-2 cursor-pointer group" onClick={() => navigateTo(ViewState.DASHBOARD)}>
                 <div className="bg-indigo-600 p-1.5 rounded-lg text-white shadow-md shadow-indigo-100 group-hover:scale-105 transition-transform"><IconShoppingBag className="w-4 h-4" /></div>
-                <span className="font-black text-lg tracking-tight text-slate-800">FamilyCart</span>
+                <span className="font-black text-xl tracking-tighter text-slate-800 italic">aLista</span>
             </div>
 
             <div className="flex items-center space-x-3">
@@ -176,7 +165,7 @@ const App: React.FC = () => {
         {currentView === ViewState.PROFILE && <UserProfile user={currentUser} onBack={handleBack} />}
         
         <div className="py-8 text-center opacity-30 text-[9px] pointer-events-none uppercase font-bold tracking-widest mt-auto">
-            v{APP_VERSION} • FamilyCart
+            v{APP_VERSION} • aLista
         </div>
       </main>
     </div>

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { GroceryList, User, Contact } from '../types';
 import { IconPlus, IconTrash, IconEdit, IconCheck, IconX, IconChevronUp, IconChevronDown, IconUsers } from './Icons';
@@ -60,7 +61,7 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
           </h1>
           <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-2 flex items-center gap-2">
             <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-            Família Online • {lists.length} Listas Ativas
+            aLista Ativa • {lists.length} Listas
           </p>
         </div>
       </header>
@@ -68,8 +69,8 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
       {lists.length === 0 && !isCreating && (
         <div className="bg-indigo-50 border-2 border-dashed border-indigo-200 rounded-3xl p-10 text-center space-y-4">
           <div className="bg-white w-16 h-16 rounded-2xl flex items-center justify-center text-3xl mx-auto shadow-sm">🛒</div>
-          <h2 className="font-bold text-indigo-900">Sua despensa está vazia!</h2>
-          <p className="text-indigo-600/60 text-sm max-w-xs mx-auto">Comece criando sua primeira lista compartilhada para a família.</p>
+          <h2 className="font-bold text-indigo-900">Nenhuma lista ainda?</h2>
+          <p className="text-indigo-600/60 text-sm max-w-xs mx-auto">Organize sua rotina criando sua primeira lista no aLista.</p>
           <button 
             onClick={() => setIsCreating(true)}
             className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold text-sm shadow-lg shadow-indigo-100 active:scale-95 transition-all"
@@ -135,7 +136,7 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
                  {!isEditing && (
                     <div className="mt-6 space-y-2">
                       <div className="flex justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                        <span>Carrinho</span>
+                        <span>Progresso</span>
                         <span>{Math.round(progress)}%</span>
                       </div>
                       <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden shadow-inner">
@@ -153,7 +154,7 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
                         </div>
                     ) : isDeleting ? (
                         <div className="flex justify-between w-full items-center animate-in slide-in-from-right-2">
-                          <span className="text-[10px] font-black text-red-600 uppercase tracking-widest">Excluir para todos?</span>
+                          <span className="text-[10px] font-black text-red-600 uppercase tracking-widest">Excluir lista?</span>
                           <div className="flex space-x-2">
                             <button onClick={e => {e.stopPropagation(); setDeletingId(null)}} className="px-4 py-1.5 text-[10px] font-bold text-slate-500 bg-white border rounded-lg">NÃO</button>
                             <button onClick={e => {e.stopPropagation(); onDeleteList(list.id)}} className="px-4 py-1.5 text-[10px] font-bold bg-red-600 text-white rounded-lg shadow-md">SIM</button>
@@ -184,13 +185,13 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
             <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center mb-3 group-hover:bg-indigo-100 group-hover:scale-110 transition-all shadow-sm">
               <IconPlus className="w-6 h-6" />
             </div>
-            <span className="font-black text-xs uppercase tracking-widest">Adicionar Lista</span>
+            <span className="font-black text-xs uppercase tracking-widest text-center">Nova Lista aLista</span>
           </button>
         )}
 
         {isCreating && (
            <div className="flex flex-col p-6 rounded-3xl border-2 border-indigo-500 bg-white shadow-2xl shadow-indigo-100 animate-in zoom-in-95 duration-200">
-              <h4 className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-4">Configurar Nova Lista</h4>
+              <h4 className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-4">Nova Lista aLista</h4>
               <div className="flex gap-3 mb-6">
                 <select 
                   value={newListIcon} 
@@ -205,7 +206,7 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
                   value={newListName} 
                   onChange={e => setNewListName(e.target.value)} 
                   className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3 text-sm font-bold focus:ring-4 focus:ring-indigo-100 outline-none transition-all" 
-                  placeholder="Ex: Rancho do Mês..." 
+                  placeholder="Nome da lista..." 
                   onKeyDown={e => e.key === 'Enter' && handleCreateSubmit()}
                 />
               </div>
