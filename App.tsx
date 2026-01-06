@@ -8,7 +8,7 @@ import * as storageService from './services/storageService';
 import { User, GroceryList as GroceryListType, ViewState, Contact } from './types';
 import { IconShoppingBag, IconLogout } from './components/Icons';
 
-const APP_VERSION = "0.5.0"; 
+const APP_VERSION = "0.6.0"; 
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -134,7 +134,7 @@ const App: React.FC = () => {
         <div className="max-w-5xl mx-auto px-4 h-full flex items-center justify-between">
             <div className="flex items-center space-x-2 cursor-pointer group" onClick={() => navigateTo(ViewState.DASHBOARD)}>
                 <div className="bg-indigo-600 p-1.5 rounded-lg text-white shadow-md shadow-indigo-100 group-hover:scale-105 transition-transform"><IconShoppingBag className="w-4 h-4" /></div>
-                <span className="font-black text-xl tracking-tighter text-slate-800 italic">aLista</span>
+                <span className="font-black text-xl tracking-tighter text-slate-800">aLista</span>
             </div>
 
             <div className="flex items-center space-x-3">

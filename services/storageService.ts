@@ -110,6 +110,8 @@ import {
                   ownerName: data.ownerName,
                   sharedWith: data.sharedWith || [],
                   webhookUrl: data.webhookUrl || '',
+                  contactName: data.contactName || '',
+                  contactPhone: data.contactPhone || '',
                   contacts: data.contacts || [],
                   color: data.color || 'bg-blue-100',
                   icon: data.icon || '📝',
@@ -135,6 +137,8 @@ import {
                       ownerName: data.ownerName,
                       sharedWith: data.sharedWith || [],
                       webhookUrl: data.webhookUrl || '',
+                      contactName: data.contactName || '',
+                      contactPhone: data.contactPhone || '',
                       contacts: data.contacts || [],
                       color: data.color || 'bg-indigo-100',
                       icon: data.icon || '📝',
@@ -153,7 +157,7 @@ import {
       };
   };
   
-  export const createList = async (name: string, icon: string, user: User, contacts: Contact[] = []): Promise<void> => {
+  export const createList = async (name: string, icon: string, user: User): Promise<void> => {
       await addDoc(collection(db, 'lists'), {
           name,
           userId: user.id,
@@ -162,7 +166,6 @@ import {
           color: 'bg-blue-100',
           icon: icon || '📝',
           items: [],
-          contacts,
           order: Date.now(),
           createdAt: serverTimestamp()
       });
@@ -174,7 +177,9 @@ import {
           name: updatedList.name,
           icon: updatedList.icon,
           items: updatedList.items,
-          contacts: updatedList.contacts || []
+          webhookUrl: updatedList.webhookUrl || '',
+          contactName: updatedList.contactName || '',
+          contactPhone: updatedList.contactPhone || ''
       });
   };
 
@@ -185,12 +190,13 @@ import {
       });
   };
   
-  export const updateListMetadata = async (listId: string, name: string, icon?: string, webhookUrl?: string, contacts?: Contact[]): Promise<void> => {
+  export const updateListMetadata = async (listId: string, name: string, icon?: string, webhookUrl?: string, contactName?: string, contactPhone?: string): Promise<void> => {
       const listRef = doc(db, 'lists', listId);
       const updates: any = { name };
       if (icon) updates.icon = icon;
       if (webhookUrl !== undefined) updates.webhookUrl = webhookUrl;
-      if (contacts !== undefined) updates.contacts = contacts;
+      if (contactName !== undefined) updates.contactName = contactName;
+      if (contactPhone !== undefined) updates.contactPhone = contactPhone;
       await updateDoc(listRef, updates);
   };
   

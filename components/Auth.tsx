@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { IconShoppingBag, IconEye, IconEyeOff } from './Icons';
 import * as storageService from '../services/storageService';
@@ -44,7 +45,6 @@ const Auth: React.FC<AuthProps> = ({ onLoginSuccess }) => {
     try {
       if (mode === 'LOGIN') {
         const user = await storageService.login(email, password);
-        // Sucesso tratado pelo listener no App.tsx
       } else if (mode === 'REGISTER') {
         if (!name || !email || !password) {
           setError('Preencha todos os campos.');
@@ -74,8 +74,8 @@ const Auth: React.FC<AuthProps> = ({ onLoginSuccess }) => {
             <div className="bg-indigo-600 p-2.5 rounded-xl text-white shadow-lg shadow-indigo-200 mb-3">
                 <IconShoppingBag className="w-6 h-6" />
             </div>
-            <h1 className="text-xl font-extrabold text-slate-800 tracking-tight">Lista de <span className="text-indigo-600">Compras</span></h1>
-            <p className="text-slate-400 text-xs mt-1">para você não ter que voltar</p>
+            <h1 className="text-2xl font-black text-slate-800 tracking-tight leading-none">aLista</h1>
+            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-2">Sua lista inteligente</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3">
@@ -90,7 +90,7 @@ const Auth: React.FC<AuthProps> = ({ onLoginSuccess }) => {
                 value={name}
                 onChange={e => setName(e.target.value)}
                 className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                placeholder="Ex: Casa Silva"
+                placeholder="Ex: Família Silva"
                 autoComplete="name"
               />
             </div>
@@ -137,28 +137,13 @@ const Auth: React.FC<AuthProps> = ({ onLoginSuccess }) => {
             </div>
           )}
 
-          {mode === 'LOGIN' && (
-            <div className="flex items-center">
-              <input
-                id="remember-me"
-                name="remember-me"
-                type="checkbox"
-                defaultChecked={true}
-                className="h-3.5 w-3.5 text-indigo-600 focus:ring-indigo-500 border-slate-300 rounded"
-              />
-              <label htmlFor="remember-me" className="ml-2 block text-[10px] text-slate-500 cursor-pointer">
-                Lembrar de mim
-              </label>
-            </div>
-          )}
-
-          {error && <div className="p-2.5 bg-red-50 text-red-600 text-xs rounded-lg font-medium border border-red-100">{error}</div>}
-          {message && <div className="p-2.5 bg-green-50 text-green-600 text-xs rounded-lg font-medium border border-green-100">{message}</div>}
+          {error && <div className="p-2.5 bg-red-50 text-red-600 text-[10px] font-black uppercase rounded-lg border border-red-100">{error}</div>}
+          {message && <div className="p-2.5 bg-green-50 text-green-600 text-[10px] font-black uppercase rounded-lg border border-green-100">{message}</div>}
 
           <button 
             type="submit" 
             disabled={loading}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-indigo-200 transition-all flex justify-center items-center text-sm"
+            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-3 rounded-xl shadow-lg shadow-indigo-200 transition-all flex justify-center items-center text-xs uppercase tracking-widest"
           >
             {loading ? (
                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -168,18 +153,18 @@ const Auth: React.FC<AuthProps> = ({ onLoginSuccess }) => {
           </button>
         </form>
 
-        <div className="mt-5 text-center text-xs text-slate-500 space-y-2">
+        <div className="mt-5 text-center text-[10px] text-slate-500 space-y-2 uppercase font-black tracking-widest">
           {mode === 'LOGIN' && (
              <>
-               <p>Não tem uma conta? <button onClick={() => setMode('REGISTER')} className="text-indigo-600 font-bold hover:underline">Cadastre-se</button></p>
+               <p>Não tem uma conta? <button onClick={() => setMode('REGISTER')} className="text-indigo-600 hover:underline">Cadastre-se</button></p>
                <p><button onClick={() => setMode('FORGOT_PASSWORD')} className="text-slate-400 hover:text-slate-600">Esqueci a senha</button></p>
              </>
           )}
           {mode === 'REGISTER' && (
-             <p>Já tem uma conta? <button onClick={() => setMode('LOGIN')} className="text-indigo-600 font-bold hover:underline">Faça Login</button></p>
+             <p>Já tem uma conta? <button onClick={() => setMode('LOGIN')} className="text-indigo-600 hover:underline">Faça Login</button></p>
           )}
           {mode === 'FORGOT_PASSWORD' && (
-             <p>Lembrou a senha? <button onClick={() => setMode('LOGIN')} className="text-indigo-600 font-bold hover:underline">Faça Login</button></p>
+             <p>Lembrou a senha? <button onClick={() => setMode('LOGIN')} className="text-indigo-600 hover:underline">Faça Login</button></p>
           )}
         </div>
         

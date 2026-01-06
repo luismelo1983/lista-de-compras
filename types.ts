@@ -33,7 +33,9 @@ export interface GroceryList {
   ownerName?: string;
   sharedWith?: string[];
   webhookUrl?: string;
-  contacts?: Contact[]; // Contatos para notificação via BotConversa
+  contactName?: string;
+  contactPhone?: string;
+  contacts?: Contact[];
 }
 
 export enum ViewState {
