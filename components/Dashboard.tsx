@@ -14,7 +14,18 @@ interface DashboardProps {
 }
 
 const EMOJI_OPTIONS = [
-    '🛒', '🏠', '🥘', '🍼', '🍎', '🥩', '🥖', '🧹', '🐶', '🚗', '💊', '🎉'
+    '🛒', '🏠', '🥘', '🍼', '🍎', '🥩', '🥖', '🧹', '🐶', '🚗', '💊', '🎉',
+    '🥛', '🧀', '🥚', '🍗', '🐟', '🥦', '🥕', '🥔', '🍇', '🍌', '🍦', '🍫',
+    '☕', '🍷', '🍺', '🥤', '🧻', '🧼', '🧴', '🔋', '💡', '🛠️', '🌱', '📦',
+    '🚿', '🛁', '🧸', '📚', '🍕', '🍔', '🍟', '🍣', '🧂', '🍯', '🍩', '🍪',
+    '🍓', '🥝', '🥭', '🌽', '🥬', '🍄', '🥐', '🥯', '🥞', '🥓', '🍝', '🍛',
+    '🥟', '🍤', '🍮', '🍰', '🥧', '🥨', '🥜', '🌰', '🍵', '🥂', '🥃', '🏺',
+    '🧴', '🧤', '🧦', '🧣', '🌂', '🧵', '🧶', '🪡', '🧺', '🪣', '🧽', '🚽',
+    '🚪', '🪑', '🛋️', '🛌', '🖼️', '🎈', '🎊', '🎀', '🎁', '🕯️', '🔑', '🔦',
+    '🍳', '🧇', '🥨', '🍖', '🥪', '🥨', '🥗', ' popcorn ', '🍿', '🧂', '🥤', '🧃', '🧉',
+    '🍱', '🍥', '🍙', '🍘', '🦑', '🦐', '🦀', '🐡', '🐠', '🐟', '🐄', '🐖',
+    '🐑', '🐓', '🦆', '🦢', '🦉', '🦋', '🐝', '🐞', '🦗', '🕷️', '🕸️', '🦂',
+    '🐢', '🦎', '🐍', '🦕', '🦖', '🦜', '🕊️', '🐇', '🐹', '🐭', '🐱', '🐶'
 ];
 
 const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, onCreateList, onEditList, onDeleteList, onMoveList }) => {
@@ -54,16 +65,10 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
 
   return (
     <div className="space-y-6 pb-20 animate-in fade-in duration-500">
-      <header className="flex justify-between items-start">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight leading-none">
-            {greeting}, <span className="text-indigo-600">{currentUser.name.split(' ')[0]}</span>
-          </h1>
-          <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-2 flex items-center gap-2">
-            <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
-            aLista Ativa • {lists.length} Listas
-          </p>
-        </div>
+      <header>
+        <h1 className="text-2xl font-black text-slate-900 tracking-tight leading-none">
+          {greeting}, <span className="text-indigo-600">{currentUser.name.split(' ')[0]}</span>
+        </h1>
       </header>
 
       {lists.length === 0 && !isCreating && (
@@ -84,7 +89,6 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
           const isEditing = editingId === list.id;
           const isDeleting = deletingId === list.id;
           const isShared = list.userId !== currentUser.id;
-          const progress = list.items.length === 0 ? 0 : (list.items.filter(i => i.checked).length / list.items.length) * 100;
 
           return (
             <div 
@@ -101,12 +105,21 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
                <div className="p-3 flex-1 cursor-pointer">
                  {isEditing ? (
                    <div className="space-y-2" onClick={e => e.stopPropagation()}>
-                      <div className="flex gap-1">
+                      <div className="flex gap-1 items-center">
+                        <select 
+                          value={editIcon} 
+                          onChange={e => setEditIcon(e.target.value)}
+                          className="bg-slate-50 border border-slate-200 rounded p-1 text-sm outline-none shrink-0"
+                        >
+                          {EMOJI_OPTIONS.map(emoji => <option key={emoji} value={emoji}>{emoji}</option>)}
+                        </select>
                         <input 
+                          autoFocus
                           type="text" 
                           value={editName} 
                           onChange={e => setEditName(e.target.value)} 
-                          className="flex-1 bg-white border border-indigo-200 rounded-md px-2 py-1 text-xs font-bold outline-none" 
+                          className="flex-1 min-w-0 bg-white border border-indigo-200 rounded px-2 py-1 text-[10px] font-bold outline-none" 
+                          onKeyDown={e => e.key === 'Enter' && saveEdit(e as any, list)}
                         />
                       </div>
                    </div>
@@ -115,7 +128,7 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
                      <div className="bg-slate-50 w-10 h-10 rounded-xl flex items-center justify-center text-xl shadow-inner group-hover:bg-indigo-50 transition-all mb-2">
                         {list.icon}
                      </div>
-                     <h3 className="font-extrabold text-slate-800 text-sm leading-tight truncate w-full">{list.name}</h3>
+                     <h3 className="font-extrabold text-slate-800 text-[13px] leading-tight truncate w-full px-1">{list.name}</h3>
                      <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">{list.items.length} itens</span>
                    </div>
                  )}
@@ -124,8 +137,8 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
                <div className="px-3 py-1.5 border-t flex justify-between items-center bg-slate-50/50 border-slate-100">
                     {isEditing ? (
                         <div className="flex space-x-1 w-full">
-                          <button onClick={() => setEditingId(null)} className="flex-1 py-1 text-[8px] font-black text-slate-500 bg-white border rounded uppercase">Voltar</button>
-                          <button onClick={e => saveEdit(e, list)} className="flex-1 py-1 text-[8px] font-black text-white bg-indigo-600 rounded uppercase">OK</button>
+                          <button onClick={() => setEditingId(null)} className="flex-1 py-1 text-[8px] font-black text-slate-500 bg-white border rounded uppercase">Sair</button>
+                          <button onClick={e => saveEdit(e, list)} className="flex-1 py-1 text-[8px] font-black text-white bg-indigo-600 rounded uppercase">Salvar</button>
                         </div>
                     ) : isDeleting ? (
                         <div className="flex justify-between w-full items-center">
@@ -157,7 +170,7 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
             className="flex flex-col items-center justify-center p-3 rounded-xl border-2 border-dashed border-slate-200 text-slate-400 hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-600 transition-all min-h-[100px] group"
           >
             <IconPlus className="w-4 h-4 mb-1" />
-            <span className="font-black text-[8px] uppercase tracking-widest">Nova aLista</span>
+            <span className="font-black text-[8px] uppercase tracking-widest">Nova a.Lista</span>
           </button>
         )}
       </div>
@@ -165,28 +178,35 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
       {isCreating && (
          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-6">
            <div className="bg-white p-4 rounded-xl border-2 border-indigo-500 shadow-2xl animate-in zoom-in-95 max-w-xs w-full">
-              <h4 className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-3">Nova aLista</h4>
-              <div className="flex gap-2 mb-4">
-                <select 
-                  value={newListIcon} 
-                  onChange={e => setNewListIcon(e.target.value)}
-                  className="bg-slate-50 border border-slate-200 rounded-lg p-2 text-xl outline-none"
-                >
-                  {EMOJI_OPTIONS.map(emoji => <option key={emoji} value={emoji}>{emoji}</option>)}
-                </select>
+              <h4 className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-3 text-center">Configurar Nova a.Lista</h4>
+              <div className="space-y-4 mb-4">
+                <div className="flex flex-col items-center gap-2">
+                   <label className="text-[9px] font-black text-slate-400 uppercase">Escolha um ícone</label>
+                   <div className="grid grid-cols-6 gap-2 max-h-40 overflow-y-auto p-2 bg-slate-50 rounded-lg w-full">
+                      {EMOJI_OPTIONS.map(emoji => (
+                        <button 
+                          key={emoji} 
+                          onClick={() => setNewListIcon(emoji)} 
+                          className={`text-xl p-1 rounded-md transition-all flex items-center justify-center ${newListIcon === emoji ? 'bg-indigo-100 ring-1 ring-indigo-500 scale-110' : 'hover:bg-white'}`}
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                   </div>
+                </div>
                 <input 
                   autoFocus 
                   type="text" 
                   value={newListName} 
                   onChange={e => setNewListName(e.target.value)} 
-                  className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold outline-none" 
-                  placeholder="Nome..." 
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500" 
+                  placeholder="Nome da lista..." 
                   onKeyDown={e => e.key === 'Enter' && handleCreateSubmit()}
                 />
               </div>
               <div className="flex justify-end space-x-2">
                 <button onClick={() => setIsCreating(false)} className="px-3 py-2 text-[9px] font-black text-slate-400 uppercase">Cancelar</button>
-                <button onClick={handleCreateSubmit} disabled={!newListName.trim()} className="bg-indigo-600 text-white px-5 py-2 rounded-lg text-[9px] font-black">CRIAR</button>
+                <button onClick={handleCreateSubmit} disabled={!newListName.trim()} className="bg-indigo-600 text-white px-5 py-2 rounded-lg text-[9px] font-black shadow-lg">CRIAR LISTA</button>
               </div>
           </div>
          </div>

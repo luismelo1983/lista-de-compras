@@ -72,7 +72,7 @@ const Auth: React.FC<AuthProps> = ({ onLoginSuccess }) => {
             <div className="bg-indigo-600 p-2.5 rounded-xl text-white shadow-lg shadow-indigo-200 mb-3">
                 <IconShoppingBag className="w-6 h-6" />
             </div>
-            <h1 className="text-2xl font-black text-slate-800 tracking-tight leading-none">aLista</h1>
+            <h1 className="text-2xl font-black text-slate-800 tracking-tight leading-none">a.Lista</h1>
             <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-2">o poder das listas</p>
         </div>
 

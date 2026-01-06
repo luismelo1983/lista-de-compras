@@ -8,7 +8,7 @@ import * as storageService from './services/storageService';
 import { User, GroceryList as GroceryListType, ViewState, Contact } from './types';
 import { IconShoppingBag, IconLogout } from './components/Icons';
 
-const APP_VERSION = "0.6.0"; 
+const APP_VERSION = "0.7.0"; 
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -134,7 +134,7 @@ const App: React.FC = () => {
         <div className="max-w-5xl mx-auto px-4 h-full flex items-center justify-between">
             <div className="flex items-center space-x-2 cursor-pointer group" onClick={() => navigateTo(ViewState.DASHBOARD)}>
                 <div className="bg-indigo-600 p-1.5 rounded-lg text-white shadow-md shadow-indigo-100 group-hover:scale-105 transition-transform"><IconShoppingBag className="w-4 h-4" /></div>
-                <span className="font-black text-xl tracking-tighter text-slate-800">aLista</span>
+                <span className="font-black text-xl tracking-tighter text-slate-800">a.Lista</span>
             </div>
 
             <div className="flex items-center space-x-3">
@@ -164,8 +164,9 @@ const App: React.FC = () => {
         )}
         {currentView === ViewState.PROFILE && <UserProfile user={currentUser} onBack={handleBack} />}
         
-        <div className="py-8 text-center opacity-30 text-[9px] pointer-events-none uppercase font-bold tracking-widest mt-auto">
-            v{APP_VERSION} • aLista
+        <div className="py-8 text-center mt-auto flex flex-col items-center">
+            <span className="opacity-30 text-[9px] pointer-events-none uppercase font-bold tracking-widest">v{APP_VERSION} • a.Lista</span>
+            <span className="opacity-20 text-[8px] pointer-events-none uppercase font-black tracking-widest mt-0.5">from ASTRO</span>
         </div>
       </main>
     </div>

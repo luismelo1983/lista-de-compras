@@ -1,13 +1,12 @@
 
 import React, { useState, useMemo } from 'react';
-import { GroceryList as GroceryListType, GroceryItem, GeminiSuggestion, User, Contact } from '../types';
+import { GroceryList as GroceryListType, GroceryItem, User, Contact } from '../types';
 import { 
-  IconArrowLeft, IconCheck, IconTrash, IconPlus, IconSparkles, 
-  IconEdit, IconX, IconChevronUp, IconChevronDown, IconShare, 
-  IconSettings, IconSortAlpha, IconShoppingBag, IconMagic, IconUsers 
+  IconArrowLeft, IconCheck, IconTrash, IconPlus, 
+  IconEdit, IconX, IconChevronUp, IconChevronDown, 
+  IconSettings, IconSortAlpha
 } from './Icons';
 import * as storageService from '../services/storageService';
-import * as geminiService from '../services/geminiService';
 
 interface GroceryListProps {
   list: GroceryListType;
@@ -20,18 +19,17 @@ type NotificationType = "Lista pronta para providência" | "Em separação" | "N
 
 const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, onUpdate }) => {
   const [newItemName, setNewItemName] = useState('');
-  const [newItemQuantity, setNewItemQuantity] = useState('1');
-  const [suggestions, setSuggestions] = useState<GeminiSuggestion[]>([]);
-  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [newItemQuantity, setNewItemQuantity] = useState('');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'config' | 'members' | 'params'>('config');
   
-  const [isSmartImportOpen, setIsSmartImportOpen] = useState(false);
-  const [smartInput, setSmartInput] = useState('');
-  const [isImporting, setIsImporting] = useState(false);
-
   const [shareEmail, setShareEmail] = useState('');
   
+  // Edição de Itens
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editItemName, setEditItemName] = useState('');
+  const [editItemQty, setEditItemQty] = useState('');
+
   // Parâmetros de aviso
   const [webhookUrl, setWebhookUrl] = useState(list.webhookUrl || '');
   const [contactName, setContactName] = useState(list.contactName || '');
@@ -58,15 +56,15 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
     onUpdate(updatedList);
   };
 
-  const addItem = (name: string, category: string = 'Geral', quantity?: number) => {
-    if (!name.trim()) return;
-    const qty = quantity || 1;
+  const addItem = (name: string, quantity: string) => {
+    if (!name.trim() || !quantity.trim()) return;
+    const qty = parseFloat(quantity) || 0;
     const maxOrder = list.items.length > 0 ? Math.max(...list.items.map(i => i.order ?? 0)) : 0;
     const newItem: GroceryItem = { 
       id: `i${Date.now() + Math.random()}`, 
       name: name.trim(), 
       checked: false, 
-      category, 
+      category: 'Geral', 
       quantity: qty,
       order: maxOrder + 1,
       createdAt: Date.now() 
@@ -74,12 +72,26 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
     const updatedList = { ...list, items: [newItem, ...list.items] };
     onUpdate(updatedList);
     setNewItemName('');
-    setNewItemQuantity('1');
+    setNewItemQuantity('');
   };
 
   const deleteItem = (itemId: string) => {
     const updatedList = { ...list, items: list.items.filter(i => i.id !== itemId) };
     onUpdate(updatedList);
+  };
+
+  const startEditItem = (item: GroceryItem) => {
+    setEditingItemId(item.id);
+    setEditItemName(item.name);
+    setEditItemQty(item.quantity?.toString() || '');
+  };
+
+  const saveEditItem = (itemId: string) => {
+    const updatedItems = list.items.map(i => 
+      i.id === itemId ? { ...i, name: editItemName.trim(), quantity: parseFloat(editItemQty) || 0 } : i
+    );
+    onUpdate({ ...list, items: updatedItems });
+    setEditingItemId(null);
   };
 
   const moveItem = (itemId: string, direction: 'up' | 'down') => {
@@ -90,7 +102,6 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
     if (targetIndex < 0 || targetIndex >= currentActive.length) return;
     
-    // Swap order
     const itemA = currentActive[index];
     const itemB = currentActive[targetIndex];
     const tempOrder = itemA.order;
@@ -108,42 +119,6 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
     });
     const updatedList = { ...list, items: [...sorted, ...completedItems] };
     onUpdate(updatedList);
-  };
-
-  const handleSmartImport = async () => {
-    if (!smartInput.trim()) return;
-    setIsImporting(true);
-    try {
-      const parsed = await geminiService.organizeRawInput(smartInput);
-      if (parsed.length > 0) {
-        const baseOrder = list.items.length;
-        const newItems: GroceryItem[] = parsed.map((it, idx) => ({
-          id: `i${Date.now() + Math.random()}`,
-          name: it.name,
-          checked: false,
-          category: it.category,
-          quantity: 1, 
-          order: baseOrder + idx,
-          createdAt: Date.now()
-        }));
-        const updatedList = { ...list, items: [...newItems, ...list.items] };
-        onUpdate(updatedList);
-        setIsSmartImportOpen(false);
-        setSmartInput('');
-      }
-    } catch (e) {
-      alert("Erro ao processar com IA.");
-    } finally {
-      setIsImporting(false);
-    }
-  };
-
-  const getAiSuggestions = async () => {
-    setLoadingSuggestions(true);
-    const itemNames = list.items.map(i => i.name);
-    const result = await geminiService.generateSmartSuggestions(itemNames);
-    setSuggestions(result);
-    setLoadingSuggestions(false);
   };
 
   const handleAddShare = async () => {
@@ -178,7 +153,7 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
                 user_sender: currentUser.name,
                 items_count: list.items.length,
                 pending_count: activeItems.length,
-                pending_items: activeItems.map(i => `${i.quantity ?? 1}x ${i.name}`).join(', ')
+                pending_items: activeItems.map(i => `${i.name} (${i.quantity ?? 1})`).join(', ')
             })
         });
         if (response.ok) {
@@ -203,10 +178,9 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
           <button onClick={onBack} className="p-1.5 -ml-2 text-slate-600 active:scale-90 transition-transform">
             <IconArrowLeft className="w-5 h-5" />
           </button>
-          <div>
-            <h1 className="font-black text-slate-800 text-lg flex items-center gap-2">
-              <span>{list.icon}</span> {list.name}
-            </h1>
+          <div className="flex items-center gap-2">
+            <span className="text-xl">{list.icon}</span>
+            <h1 className="font-black text-slate-800 text-lg truncate max-w-[140px] leading-tight">{list.name}</h1>
           </div>
         </div>
         <div className="flex items-center gap-1">
@@ -214,14 +188,11 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
               <button 
                 onClick={() => setShowNotifyMenu(true)} 
                 disabled={isNotifying}
-                className="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-md shadow-indigo-100 flex items-center gap-2 active:scale-95 transition-all mr-2"
+                className="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-md shadow-indigo-100 flex items-center gap-2 active:scale-95 transition-all mr-1"
               >
-                {isNotifying ? "Enviando..." : "Avisar"}
+                {isNotifying ? "..." : "Avisar"}
               </button>
           )}
-          <button onClick={() => setIsSmartImportOpen(true)} className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg">
-            <IconMagic className="w-5 h-5" />
-          </button>
           <button onClick={() => { setIsSettingsOpen(true); setActiveTab('config'); }} className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg">
             <IconSettings className="w-5 h-5" />
           </button>
@@ -229,30 +200,32 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-24">
-        {/* Input Manual com Quantidade */}
+        {/* Input Manual com Quantidade Obrigatória */}
         <div className="flex gap-2 bg-slate-50 p-2 rounded-xl border border-slate-100 items-center shadow-inner">
           <div className="flex items-center gap-1 border-r border-slate-200 pr-2">
             <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter mr-1">Qtd</span>
             <input 
               type="number" 
-              className="w-10 bg-white border border-slate-200 rounded-lg text-xs font-bold text-center py-1.5 outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-12 bg-white border border-slate-200 rounded-lg text-xs font-bold text-center py-1.5 outline-none focus:ring-2 focus:ring-indigo-500"
               value={newItemQuantity}
               onChange={e => setNewItemQuantity(e.target.value)}
+              placeholder=""
               min="1"
+              step="any"
             />
           </div>
           <input 
             type="text" 
-            placeholder="O que comprar?" 
+            placeholder="digite o item" 
             className="flex-1 bg-transparent border-none outline-none text-sm px-2 font-bold text-slate-700"
             value={newItemName}
             onChange={e => setNewItemName(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && addItem(newItemName, 'Geral', parseInt(newItemQuantity) || 1)}
+            onKeyDown={e => e.key === 'Enter' && addItem(newItemName, newItemQuantity)}
           />
           <button 
-            onClick={() => addItem(newItemName, 'Geral', parseInt(newItemQuantity) || 1)}
-            disabled={!newItemName.trim()}
-            className="bg-indigo-600 text-white p-2 rounded-lg shadow-md disabled:opacity-50 active:scale-90 transition-transform"
+            onClick={() => addItem(newItemName, newItemQuantity)}
+            disabled={!newItemName.trim() || !newItemQuantity.trim()}
+            className="bg-indigo-600 text-white p-2 rounded-lg shadow-md disabled:opacity-30 active:scale-90 transition-transform"
           >
             <IconPlus className="w-4 h-4" />
           </button>
@@ -262,8 +235,8 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
         <div className="space-y-2">
           <div className="flex justify-between items-center mb-2">
             <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-              <span>Para Comprar</span>
-              <span className="bg-slate-100 px-2 py-0.5 rounded-full">{activeItems.length}</span>
+              <span>PENDENTES</span>
+              <span className="bg-slate-100 px-2 py-0.5 rounded-full text-[8px] font-bold">{activeItems.length}</span>
             </h2>
             <button 
               onClick={sortActiveAlphabetically}
@@ -273,55 +246,56 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
             </button>
           </div>
           {activeItems.length === 0 ? (
-            <div className="text-center py-8 text-slate-400 italic text-sm">Lista vazia. Comece a preencher!</div>
+            <div className="text-center py-8 text-slate-400 italic text-sm">Nenhum item pendente.</div>
           ) : (
             activeItems.map((item, idx) => (
-              <div key={item.id} className="group flex items-center gap-3 p-3 bg-white border border-slate-100 rounded-xl hover:border-indigo-200 transition-colors shadow-sm">
-                <button onClick={() => toggleItem(item)} className="w-6 h-6 border-2 border-slate-200 rounded-full flex items-center justify-center hover:border-indigo-500 bg-white transition-all">
+              <div key={item.id} className={`group flex items-center gap-3 p-3 bg-white border rounded-xl shadow-sm transition-all ${editingItemId === item.id ? 'ring-1 ring-indigo-500 border-indigo-200' : 'border-slate-100 hover:border-indigo-200'}`}>
+                <button onClick={() => toggleItem(item)} className="w-6 h-6 border-2 border-slate-200 rounded-full flex items-center justify-center hover:border-indigo-500 bg-white shrink-0">
                 </button>
+                
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-black text-slate-700 truncate">
-                    {item.quantity && item.quantity > 1 && <span className="text-indigo-600 mr-1.5 bg-indigo-50 px-1.5 py-0.5 rounded text-[10px]">{item.quantity}x</span>}
-                    {item.name}
-                  </p>
+                  {editingItemId === item.id ? (
+                    <div className="flex items-center gap-2 w-full">
+                       <input 
+                         type="number" 
+                         value={editItemQty} 
+                         onChange={e => setEditItemQty(e.target.value)}
+                         className="w-14 bg-slate-50 border border-slate-200 rounded px-1.5 py-1 text-xs font-bold text-center outline-none focus:ring-1 focus:ring-indigo-500"
+                         step="any"
+                       />
+                       <input 
+                         autoFocus
+                         type="text" 
+                         value={editItemName} 
+                         onChange={e => setEditItemName(e.target.value)}
+                         className="flex-1 bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs font-bold outline-none focus:ring-1 focus:ring-indigo-500"
+                         onKeyDown={e => e.key === 'Enter' && saveEditItem(item.id)}
+                       />
+                       <div className="flex gap-1 shrink-0">
+                          <button onClick={() => saveEditItem(item.id)} className="text-emerald-500 p-1"><IconCheck className="w-4 h-4" /></button>
+                          <button onClick={() => setEditingItemId(null)} className="text-red-400 p-1"><IconX className="w-4 h-4" /></button>
+                       </div>
+                    </div>
+                  ) : (
+                    <div className="w-full flex justify-between items-center gap-2 overflow-hidden">
+                      <p className="text-sm font-black text-slate-700 truncate flex-1">{item.name}</p>
+                      <span className="text-indigo-600 font-black text-[11px] whitespace-nowrap shrink-0 bg-indigo-50 px-1.5 py-0.5 rounded">({item.quantity})</span>
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={() => moveItem(item.id, 'up')} disabled={idx === 0} className="p-1 text-slate-300 hover:text-indigo-500 disabled:opacity-30"><IconChevronUp className="w-4 h-4"/></button>
-                  <button onClick={() => moveItem(item.id, 'down')} disabled={idx === activeItems.length - 1} className="p-1 text-slate-300 hover:text-indigo-500 disabled:opacity-30"><IconChevronDown className="w-4 h-4"/></button>
-                  <button onClick={() => deleteItem(item.id)} className="p-1 text-slate-300 hover:text-red-500">
-                    <IconTrash className="w-4 h-4" />
-                  </button>
-                </div>
+
+                {!editingItemId && (
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    <button onClick={() => startEditItem(item)} className="p-1 text-slate-300 hover:text-indigo-500"><IconEdit className="w-3.5 h-3.5"/></button>
+                    <button onClick={() => moveItem(item.id, 'up')} disabled={idx === 0} className="p-1 text-slate-300 hover:text-indigo-500 disabled:opacity-30"><IconChevronUp className="w-3.5 h-3.5"/></button>
+                    <button onClick={() => moveItem(item.id, 'down')} disabled={idx === activeItems.length - 1} className="p-1 text-slate-300 hover:text-indigo-500 disabled:opacity-30"><IconChevronDown className="w-3.5 h-3.5"/></button>
+                    <button onClick={() => deleteItem(item.id)} className="p-1 text-slate-300 hover:text-red-500">
+                      <IconTrash className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
               </div>
             ))
-          )}
-        </div>
-
-        {/* Sugestões IA */}
-        <div className="pt-4 border-t border-slate-100">
-          <button 
-            onClick={getAiSuggestions} 
-            disabled={loadingSuggestions}
-            className="w-full py-3 border-2 border-dashed border-indigo-100 rounded-xl flex items-center justify-center gap-2 text-indigo-600 font-black text-[10px] uppercase tracking-widest hover:bg-indigo-50 transition-colors"
-          >
-            <IconSparkles className={`w-3.5 h-3.5 ${loadingSuggestions ? 'animate-pulse' : ''}`} />
-            {loadingSuggestions ? 'IA Pensando...' : 'Sugerir Itens Inteligentes'}
-          </button>
-          
-          {suggestions.length > 0 && (
-            <div className="mt-3 grid grid-cols-1 gap-2">
-              {suggestions.map((s, idx) => (
-                <div key={idx} className="bg-indigo-50 p-3 rounded-xl border border-indigo-100 flex items-center justify-between animate-in slide-in-from-top-2">
-                  <div className="flex-1">
-                    <p className="text-xs font-black text-indigo-900">{s.name}</p>
-                    <p className="text-[10px] text-indigo-600/70 italic leading-tight">{s.reason}</p>
-                  </div>
-                  <button onClick={() => { addItem(s.name, s.category); setSuggestions(s => s.filter((_, i) => i !== idx)); }} className="bg-indigo-600 text-white p-1.5 rounded-lg shadow-sm">
-                    <IconPlus className="w-3 h-3" />
-                  </button>
-                </div>
-              ))}
-            </div>
           )}
         </div>
 
@@ -329,20 +303,20 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
         {completedItems.length > 0 && (
           <div className="space-y-2 pt-6">
             <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex justify-between">
-              <span>No Carrinho (Ordenado A-Z)</span>
-              <span>{completedItems.length}</span>
+              <span>NO CARRINHO</span>
+              <span className="text-[8px] font-bold">{completedItems.length}</span>
             </h2>
             {completedItems.map(item => (
-              <div key={item.id} className="flex items-center gap-3 p-3 bg-slate-50 border border-transparent rounded-xl opacity-60">
-                <button onClick={() => toggleItem(item)} className="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center shadow-sm">
+              <div key={item.id} className="flex items-center gap-3 p-2.5 bg-slate-50 border border-transparent rounded-xl opacity-50">
+                <button onClick={() => toggleItem(item)} className="w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center shadow-sm shrink-0">
                   <IconCheck className="w-3 h-3 text-white" />
                 </button>
-                <p className="text-sm line-through font-bold text-slate-500 flex-1">
-                    {item.quantity && item.quantity > 1 && <span className="mr-1">{item.quantity}x</span>}
-                    {item.name}
-                </p>
-                <button onClick={() => deleteItem(item.id)} className="p-2 text-slate-300 hover:text-red-400">
-                    <IconTrash className="w-4 h-4" />
+                <div className="flex-1 min-w-0 flex justify-between items-center gap-2 overflow-hidden">
+                    <p className="text-sm line-through font-bold text-slate-500 truncate flex-1">{item.name}</p>
+                    <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap shrink-0">({item.quantity})</span>
+                </div>
+                <button onClick={() => deleteItem(item.id)} className="p-1 text-slate-300 hover:text-red-400 shrink-0">
+                    <IconTrash className="w-3.5 h-3.5" />
                 </button>
               </div>
             ))}
@@ -355,7 +329,7 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
           <div className="fixed inset-0 z-[110] bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
               <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom">
                   <div className="p-4 border-b flex justify-between items-center bg-indigo-600 text-white">
-                      <span className="text-xs font-black uppercase tracking-widest">Selecione o aviso</span>
+                      <span className="text-[10px] font-black uppercase tracking-widest">Enviar Notificação</span>
                       <button onClick={() => setShowNotifyMenu(false)}><IconX className="w-5 h-5" /></button>
                   </div>
                   <div className="p-4 space-y-2">
@@ -363,7 +337,7 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
                           <button 
                             key={t}
                             onClick={() => handleNotify(t)}
-                            className="w-full p-4 text-left text-xs font-black uppercase tracking-wider text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 rounded-xl transition-colors border border-slate-100 shadow-sm"
+                            className="w-full p-4 text-left text-[10px] font-black uppercase tracking-wider text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 rounded-xl transition-colors border border-slate-100 shadow-sm"
                           >
                             {t}
                           </button>
@@ -373,44 +347,12 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
           </div>
       )}
 
-      {/* Modal Importação Inteligente */}
-      {isSmartImportOpen && (
-        <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
-          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom">
-            <div className="p-4 border-b flex items-center justify-between bg-indigo-600 text-white">
-              <div className="flex items-center gap-2">
-                <IconMagic className="w-5 h-5" />
-                <h3 className="font-black uppercase tracking-widest text-[10px]">Importação Mágica</h3>
-              </div>
-              <button onClick={() => setIsSmartImportOpen(false)}><IconX className="w-5 h-5" /></button>
-            </div>
-            <div className="p-5 space-y-4">
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed">Cole uma mensagem do WhatsApp ou escreva o que precisa. O aLista vai organizar tudo para você.</p>
-              <textarea 
-                className="w-full h-32 p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none"
-                placeholder="Ex: 2kg de carne, leite, ovos..."
-                value={smartInput}
-                onChange={e => setSmartInput(e.target.value)}
-              />
-              <button 
-                onClick={handleSmartImport}
-                disabled={isImporting || !smartInput.trim()}
-                className="w-full bg-indigo-600 text-white py-3 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-indigo-100 flex items-center justify-center gap-2"
-              >
-                {isImporting ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <IconSparkles className="w-4 h-4" />}
-                Organizar com IA
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Modal Configurações / Membros / Parâmetros */}
       {isSettingsOpen && (
         <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="flex border-b">
-              <button onClick={() => setActiveTab('config')} className={`flex-1 py-4 text-[9px] font-black uppercase tracking-widest transition-colors ${activeTab === 'config' ? 'text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50/30' : 'text-slate-400 hover:bg-slate-50'}`}>Info</button>
+              <button onClick={() => setActiveTab('config')} className={`flex-1 py-4 text-[9px] font-black uppercase tracking-widest transition-colors ${activeTab === 'config' ? 'text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50/30' : 'text-slate-400 hover:bg-slate-50'}`}>Lista</button>
               <button onClick={() => setActiveTab('params')} className={`flex-1 py-4 text-[9px] font-black uppercase tracking-widest transition-colors ${activeTab === 'params' ? 'text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50/30' : 'text-slate-400 hover:bg-slate-50'}`}>Avisos</button>
               <button onClick={() => setActiveTab('members')} className={`flex-1 py-4 text-[9px] font-black uppercase tracking-widest transition-colors ${activeTab === 'members' ? 'text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50/30' : 'text-slate-400 hover:bg-slate-50'}`}>Membros</button>
             </div>
@@ -419,19 +361,19 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
               {activeTab === 'config' && (
                 <div className="space-y-4">
                    <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
-                      <p className="text-[10px] font-black text-slate-400 uppercase mb-2">Dono da Lista</p>
+                      <p className="text-[10px] font-black text-slate-400 uppercase mb-2">Responsável</p>
                       <div className="flex items-center gap-2">
                         <div className="w-7 h-7 bg-indigo-600 rounded-full flex items-center justify-center text-[11px] text-white font-black uppercase">{list.ownerName?.charAt(0)}</div>
                         <span className="text-sm font-black text-slate-700">{list.ownerName}</span>
                       </div>
                    </div>
-                   <button onClick={() => setIsSettingsOpen(false)} className="w-full bg-slate-100 py-3 rounded-xl text-[10px] font-black text-slate-500 hover:bg-slate-200 uppercase tracking-widest">Fechar</button>
+                   <button onClick={() => setIsSettingsOpen(false)} className="w-full bg-slate-100 py-3 rounded-xl text-[10px] font-black text-slate-500 hover:bg-slate-200 uppercase tracking-widest">Sair</button>
                 </div>
               )}
 
               {activeTab === 'params' && (
                   <div className="space-y-4">
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Parâmetros BotConversa</p>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Configuração do BotConversa</p>
                       <div className="space-y-3">
                           <div>
                               <label className="block text-[9px] font-black text-slate-500 uppercase mb-1">Webhook URL</label>
@@ -439,8 +381,8 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
                                 type="text" 
                                 value={webhookUrl}
                                 onChange={e => setWebhookUrl(e.target.value)}
-                                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none"
-                                placeholder="https://api.botconversa.com.br/..."
+                                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500"
+                                placeholder="URL do Webhook..."
                               />
                           </div>
                           <div>
@@ -449,8 +391,8 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
                                 type="text" 
                                 value={contactName}
                                 onChange={e => setContactName(e.target.value)}
-                                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none"
-                                placeholder="Nome da pessoa a avisar"
+                                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500"
+                                placeholder="Nome para notificar..."
                               />
                           </div>
                           <div>
@@ -459,12 +401,12 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
                                 type="tel" 
                                 value={contactPhone}
                                 onChange={e => setContactPhone(e.target.value)}
-                                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none"
-                                placeholder="5511999999999"
+                                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500"
+                                placeholder="55119..."
                               />
                           </div>
                       </div>
-                      <button onClick={handleSaveParams} className="w-full bg-indigo-600 text-white py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-100">Salvar Parâmetros</button>
+                      <button onClick={handleSaveParams} className="w-full bg-indigo-600 text-white py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg">Salvar Configurações</button>
                   </div>
               )}
 
@@ -481,15 +423,15 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
                       <button onClick={handleAddShare} className="bg-indigo-600 text-white p-2.5 rounded-xl shadow-md"><IconPlus className="w-4 h-4"/></button>
                    </div>
                    <div className="space-y-2">
-                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Acesso Compartilhado</h4>
+                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Quem acessa</h4>
                       <div className="flex items-center justify-between p-3 bg-indigo-50 border border-indigo-100 rounded-xl">
                         <span className="text-[10px] font-black text-indigo-900">{list.ownerName} (Dono)</span>
-                        <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse"></div>
+                        <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full"></div>
                       </div>
                       {list.sharedWith?.map(email => (
                         <div key={email} className="flex items-center justify-between p-3 border border-slate-100 rounded-xl">
-                          <span className="text-[10px] text-slate-600 font-black">{email}</span>
-                          <button onClick={() => handleRemoveShare(email)} className="text-slate-300 hover:text-red-500 p-1 transition-colors"><IconTrash className="w-3.5 h-3.5"/></button>
+                          <span className="text-[10px] text-slate-600 font-black truncate max-w-[200px]">{email}</span>
+                          <button onClick={() => handleRemoveShare(email)} className="text-slate-300 hover:text-red-500 p-1"><IconTrash className="w-3.5 h-3.5"/></button>
                         </div>
                       ))}
                    </div>
