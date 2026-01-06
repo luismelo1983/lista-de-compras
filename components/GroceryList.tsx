@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { GroceryList as GroceryListType, GroceryItem, GeminiSuggestion, User, Contact } from '../types';
 import { 
   IconArrowLeft, IconCheck, IconTrash, IconPlus, IconSparkles, 
@@ -39,8 +39,18 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
   const [isNotifying, setIsNotifying] = useState(false);
   const [showNotifyMenu, setShowNotifyMenu] = useState(false);
 
-  const activeItems = (list.items || []).filter(i => !i.checked);
-  const completedItems = (list.items || []).filter(i => i.checked);
+  // Ordenação de itens
+  const activeItems = useMemo(() => {
+    return (list.items || [])
+      .filter(i => !i.checked)
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  }, [list.items]);
+
+  const completedItems = useMemo(() => {
+    return (list.items || [])
+      .filter(i => i.checked)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [list.items]);
 
   const toggleItem = (item: GroceryItem) => {
     const updatedItems = list.items.map(i => i.id === item.id ? { ...i, checked: !item.checked } : i);
@@ -51,12 +61,14 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
   const addItem = (name: string, category: string = 'Geral', quantity?: number) => {
     if (!name.trim()) return;
     const qty = quantity || 1;
+    const maxOrder = list.items.length > 0 ? Math.max(...list.items.map(i => i.order ?? 0)) : 0;
     const newItem: GroceryItem = { 
       id: `i${Date.now() + Math.random()}`, 
       name: name.trim(), 
       checked: false, 
       category, 
-      quantity: qty, 
+      quantity: qty,
+      order: maxOrder + 1,
       createdAt: Date.now() 
     };
     const updatedList = { ...list, items: [newItem, ...list.items] };
@@ -70,18 +82,48 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
     onUpdate(updatedList);
   };
 
+  const moveItem = (itemId: string, direction: 'up' | 'down') => {
+    const currentActive = [...activeItems];
+    const index = currentActive.findIndex(i => i.id === itemId);
+    if (index === -1) return;
+    
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= currentActive.length) return;
+    
+    // Swap order
+    const itemA = currentActive[index];
+    const itemB = currentActive[targetIndex];
+    const tempOrder = itemA.order;
+    itemA.order = itemB.order;
+    itemB.order = tempOrder;
+    
+    const updatedList = { ...list, items: [...currentActive, ...completedItems] };
+    onUpdate(updatedList);
+  };
+
+  const sortActiveAlphabetically = () => {
+    const sorted = [...activeItems].sort((a, b) => a.name.localeCompare(b.name));
+    sorted.forEach((item, idx) => {
+      item.order = idx;
+    });
+    const updatedList = { ...list, items: [...sorted, ...completedItems] };
+    onUpdate(updatedList);
+  };
+
   const handleSmartImport = async () => {
     if (!smartInput.trim()) return;
     setIsImporting(true);
     try {
       const parsed = await geminiService.organizeRawInput(smartInput);
       if (parsed.length > 0) {
-        const newItems: GroceryItem[] = parsed.map(it => ({
+        const baseOrder = list.items.length;
+        const newItems: GroceryItem[] = parsed.map((it, idx) => ({
           id: `i${Date.now() + Math.random()}`,
           name: it.name,
           checked: false,
           category: it.category,
           quantity: 1, 
+          order: baseOrder + idx,
           createdAt: Date.now()
         }));
         const updatedList = { ...list, items: [...newItems, ...list.items] };
@@ -135,11 +177,12 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
                 contact_phone: list.contactPhone,
                 user_sender: currentUser.name,
                 items_count: list.items.length,
-                pending_count: activeItems.length
+                pending_count: activeItems.length,
+                pending_items: activeItems.map(i => `${i.quantity ?? 1}x ${i.name}`).join(', ')
             })
         });
         if (response.ok) {
-            alert(`Aviso enviado: ${type}`);
+            alert(`Aviso enviado com sucesso!`);
         } else {
             throw new Error();
         }
@@ -217,16 +260,24 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
 
         {/* Lista Ativa */}
         <div className="space-y-2">
-          <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex justify-between items-center">
-            <span>Para Comprar</span>
-            <span className="bg-slate-100 px-2 py-0.5 rounded-full">{activeItems.length}</span>
-          </h2>
+          <div className="flex justify-between items-center mb-2">
+            <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+              <span>Para Comprar</span>
+              <span className="bg-slate-100 px-2 py-0.5 rounded-full">{activeItems.length}</span>
+            </h2>
+            <button 
+              onClick={sortActiveAlphabetically}
+              className="text-[9px] font-black text-indigo-600 uppercase tracking-widest flex items-center gap-1 hover:bg-indigo-50 px-2 py-1 rounded-md transition-all"
+            >
+              <IconSortAlpha className="w-3 h-3" /> Ordenar A-Z
+            </button>
+          </div>
           {activeItems.length === 0 ? (
             <div className="text-center py-8 text-slate-400 italic text-sm">Lista vazia. Comece a preencher!</div>
           ) : (
-            activeItems.map(item => (
+            activeItems.map((item, idx) => (
               <div key={item.id} className="group flex items-center gap-3 p-3 bg-white border border-slate-100 rounded-xl hover:border-indigo-200 transition-colors shadow-sm">
-                <button onClick={() => toggleItem(item)} className="w-6 h-6 border-2 border-slate-200 rounded-full flex items-center justify-center hover:border-indigo-500 bg-white">
+                <button onClick={() => toggleItem(item)} className="w-6 h-6 border-2 border-slate-200 rounded-full flex items-center justify-center hover:border-indigo-500 bg-white transition-all">
                 </button>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-black text-slate-700 truncate">
@@ -234,9 +285,13 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
                     {item.name}
                   </p>
                 </div>
-                <button onClick={() => deleteItem(item.id)} className="opacity-0 group-hover:opacity-100 p-2 text-slate-300 hover:text-red-500 transition-all">
-                  <IconTrash className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button onClick={() => moveItem(item.id, 'up')} disabled={idx === 0} className="p-1 text-slate-300 hover:text-indigo-500 disabled:opacity-30"><IconChevronUp className="w-4 h-4"/></button>
+                  <button onClick={() => moveItem(item.id, 'down')} disabled={idx === activeItems.length - 1} className="p-1 text-slate-300 hover:text-indigo-500 disabled:opacity-30"><IconChevronDown className="w-4 h-4"/></button>
+                  <button onClick={() => deleteItem(item.id)} className="p-1 text-slate-300 hover:text-red-500">
+                    <IconTrash className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             ))
           )}
@@ -270,11 +325,11 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
           )}
         </div>
 
-        {/* Lista Comprada */}
+        {/* Lista Comprada - Ordenada Alfabeticamente */}
         {completedItems.length > 0 && (
           <div className="space-y-2 pt-6">
             <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex justify-between">
-              <span>No Carrinho</span>
+              <span>No Carrinho (Ordenado A-Z)</span>
               <span>{completedItems.length}</span>
             </h2>
             {completedItems.map(item => (

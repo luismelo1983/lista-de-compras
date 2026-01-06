@@ -18,6 +18,7 @@ export interface GroceryItem {
   checked: boolean;
   category?: string;
   quantity?: number;
+  order?: number;
   createdAt: number;
 }
 

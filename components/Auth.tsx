@@ -29,7 +29,7 @@ const Auth: React.FC<AuthProps> = ({ onLoginSuccess }) => {
           case 'auth/email-already-in-use': return 'Este email já está em uso.';
           case 'auth/weak-password': return 'A senha é muito fraca (mínimo 6 caracteres).';
           case 'auth/invalid-credential': return 'Email ou senha incorretos.';
-          case 'auth/operation-not-allowed': return 'ERRO DE CONFIGURAÇÃO: O login por Email/Senha não está ativado no Firebase Console.';
+          case 'auth/operation-not-allowed': return 'Erro de configuração no Firebase.';
           case 'auth/network-request-failed': return 'Erro de rede. Verifique sua conexão.';
           case 'auth/too-many-requests': return 'Muitas tentativas. Tente novamente mais tarde.';
           default: return `Erro desconhecido: ${errCode}`;
@@ -44,7 +44,7 @@ const Auth: React.FC<AuthProps> = ({ onLoginSuccess }) => {
 
     try {
       if (mode === 'LOGIN') {
-        const user = await storageService.login(email, password);
+        await storageService.login(email, password);
       } else if (mode === 'REGISTER') {
         if (!name || !email || !password) {
           setError('Preencha todos os campos.');
@@ -58,9 +58,7 @@ const Auth: React.FC<AuthProps> = ({ onLoginSuccess }) => {
         setTimeout(() => setMode('LOGIN'), 3000);
       }
     } catch (err: any) {
-      console.error("Auth Error Full Object:", err);
-      const errorCode = err.code || 'unknown';
-      setError(getFriendlyErrorMessage(errorCode));
+      setError(getFriendlyErrorMessage(err.code || 'unknown'));
     } finally {
       setLoading(false);
     }
@@ -75,7 +73,7 @@ const Auth: React.FC<AuthProps> = ({ onLoginSuccess }) => {
                 <IconShoppingBag className="w-6 h-6" />
             </div>
             <h1 className="text-2xl font-black text-slate-800 tracking-tight leading-none">aLista</h1>
-            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-2">Sua lista inteligente</p>
+            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-2">o poder das listas</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3">
@@ -167,7 +165,6 @@ const Auth: React.FC<AuthProps> = ({ onLoginSuccess }) => {
              <p>Lembrou a senha? <button onClick={() => setMode('LOGIN')} className="text-indigo-600 hover:underline">Faça Login</button></p>
           )}
         </div>
-        
       </div>
     </div>
   );
