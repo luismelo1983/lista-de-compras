@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { IconShoppingBag, IconEye, IconEyeOff } from './Icons';
 import * as storageService from '../services/storageService';
@@ -154,15 +153,15 @@ const Auth: React.FC<AuthProps> = ({ onLoginSuccess }) => {
         <div className="mt-5 text-center text-[10px] text-slate-500 space-y-2 uppercase font-black tracking-widest">
           {mode === 'LOGIN' && (
              <>
-               <p>Não tem uma conta? <button onClick={() => setMode('REGISTER')} className="text-indigo-600 hover:underline">Cadastre-se</button></p>
+               <p>não tem uma conta? <button onClick={() => setMode('REGISTER')} className="text-indigo-600 hover:underline">Cadastre-se</button></p>
                <p><button onClick={() => setMode('FORGOT_PASSWORD')} className="text-slate-400 hover:text-slate-600">Esqueci a senha</button></p>
              </>
           )}
           {mode === 'REGISTER' && (
-             <p>Já tem uma conta? <button onClick={() => setMode('LOGIN')} className="text-indigo-600 hover:underline">Faça Login</button></p>
+             <p>já tem uma conta? <button onClick={() => setMode('LOGIN')} className="text-indigo-600 hover:underline">Faça Login</button></p>
           )}
           {mode === 'FORGOT_PASSWORD' && (
-             <p>Lembrou a senha? <button onClick={() => setMode('LOGIN')} className="text-indigo-600 hover:underline">Faça Login</button></p>
+             <p>lembrou a senha? <button onClick={() => setMode('LOGIN')} className="text-indigo-600 hover:underline">Faça Login</button></p>
           )}
         </div>
       </div>

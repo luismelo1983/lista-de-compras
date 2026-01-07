@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { GroceryList, User, Contact } from '../types';
 import { IconPlus, IconTrash, IconEdit, IconCheck, IconX, IconChevronUp, IconChevronDown, IconUsers } from './Icons';
@@ -14,7 +13,7 @@ interface DashboardProps {
 }
 
 const EMOJI_OPTIONS = [
-    // Principais e Categorias
+    // Alimentos e Categorias Base
     '🛒', '🏠', '🥘', '🍼', '🍎', '🥩', '🥖', '🧹', '🐶', '🚗', '💊', '🎉',
     '🥛', '🧀', '🥚', '🍗', '🐟', '🥦', '🥕', '🥔', '🍇', '🍌', '🍦', '🍫',
     '☕', '🍷', '🍺', '🥤', '🧻', '🧼', '🧴', '🔋', '💡', '🛠️', '🌱', '📦',
@@ -26,23 +25,22 @@ const EMOJI_OPTIONS = [
     '🦐', '🦀', '🐡', '🐠', '🐟', '🐄', '🐖', '🐑', '🐓', '🦆', '🦉', '🦋', 
     '🐝', '🐞', '🦗', '🕷️', '🕸️', '🦂', '🐢', '🦎', '🐍', '🦜', '🕊️', '🐇', 
     '🐹', '🐭', '🐱', '🐶',
-    // Higiene e Banheiro
-    '🪥', '🪒', '🚿', '🛀', '🧼', '🧴', '🧻', '🚽', '🧺', '🧹', '🧼',
-    // Escritório e Tecnologia
+    // Higiene, Banheiro e Limpeza
+    '🪥', '🪒', '🚿', '🛀', '🧼', '🧴', '🧻', '🚽', '🧺', '🧹', '🪣', '🧼', '🧤',
+    // Escritório, Tecnologia e Lazer
     '💻', '🖱️', '⌨️', '📱', '🔋', '🔌', '💡', '🔦', '🕯️', '📺', '📻', '📷',
-    '🖋️', '✏️', '🖍️', '📝', '📒', '📒', '🗞️', '📚', '✂️', '🖇️', '📌',
-    // Ferramentas e Reparos
+    '🖋️', '✏️', '🖍️', '📝', '📒', '🗞️', '📚', '✂️', '🖇️', '📌', '🎨', '🧩',
+    // Ferramentas, Reparos e Casa
     '🔨', '⚒️', '🛠️', '⛏️', '🔩', '⚙️', '🧱', '⛓️', '🧰', '🔧', '🪛', '🪚',
-    // Bebidas e Drinks
+    '🔑', '🔐', '🚪', '🪑', '🛋️', '🛌', '🖼️', '🧺', '🕰️', '🌡️', '🌬️', '🔥',
+    // Bebidas e Padaria
     '🍶', '🍵', '☕', '🥛', '🍼', '🥤', '🧋', '🧃', '🧉', '🍺', '🍻', '🥂', 
-    '🍷', '🥃', '🍸', '🍹', '🍾',
-    // Padaria e Grãos
-    '🍞', '🥐', '🥖', '🫓', '🥨', '🥯', '🥞', '🧇', '🍚', '🍙', '🍛', '🍜', 
-    '🍝', '🍠', '🍢', '🍣', '🍤', '🍥', '🥮', '🍡', '🥟', '🥠', '🥡',
+    '🍷', '🥃', '🍸', '🍹', '🍾', '🍞', '🥐', '🥖', '🫓', '🥨', '🥯', '🥞', 
+    '🧇', '🍚', '🍙', '🍛', '🍜', '🍝', '🍢', '🍣', '🍤', '🍥', '🥮', '🍡',
     // Vegetais e Frutas WhatsApp Style
     '🥑', '🍆', '🥔', '🥕', '🌽', '🌶️', '🥒', '🥬', '🥦', '🧄', '🧅', '🍄', 
     '🥜', '🌰', '🍎', '🍐', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🍈', '🍒', 
-    '🍑', '🥭', '🍍', '🥥', '🥝', '🍅', '🍊'
+    '🍑', '🥭', '🍍', '🥥', '🥝', '🍅', '🥥', '🥭'
 ];
 
 const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, onCreateList, onEditList, onDeleteList, onMoveList }) => {
@@ -78,6 +76,14 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
       e.stopPropagation();
       onEditList(list.id, editName.trim(), editIcon, list.webhookUrl, list.contactName, list.contactPhone);
       setEditingId(null);
+  };
+
+  const confirmDelete = (e: React.MouseEvent, listId: string) => {
+    e.stopPropagation();
+    if (window.confirm("Deseja realmente excluir esta lista inteira? Todos os itens serão apagados.")) {
+        onDeleteList(listId);
+    }
+    setDeletingId(null);
   };
 
   return (
@@ -161,7 +167,7 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
                         <div className="flex justify-between w-full items-center">
                           <div className="flex space-x-1">
                             <button onClick={e => {e.stopPropagation(); setDeletingId(null)}} className="px-1.5 py-0.5 text-[7px] font-bold text-slate-500 bg-white border rounded">NÃO</button>
-                            <button onClick={e => {e.stopPropagation(); onDeleteList(list.id)}} className="px-1.5 py-0.5 text-[7px] font-bold bg-red-600 text-white rounded">SIM</button>
+                            <button onClick={e => confirmDelete(e, list.id)} className="px-1.5 py-0.5 text-[7px] font-bold bg-red-600 text-white rounded">SIM</button>
                           </div>
                         </div>
                     ) : (

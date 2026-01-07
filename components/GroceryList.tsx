@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { GroceryList as GroceryListType, GroceryItem, User, Contact } from '../types';
 import { 
@@ -78,9 +77,11 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
     setNewItemQuantity('');
   };
 
-  const deleteItem = (itemId: string) => {
-    const updatedList = { ...list, items: list.items.filter(i => i.id !== itemId) };
-    onUpdate(updatedList);
+  const deleteItem = (item: GroceryItem) => {
+    if (window.confirm(`Remover "${item.name}" da lista?`)) {
+      const updatedList = { ...list, items: list.items.filter(i => i.id !== item.id) };
+      onUpdate(updatedList);
+    }
   };
 
   const startEditItem = (item: GroceryItem) => {
@@ -175,18 +176,18 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
 
   return (
     <div className="flex flex-col h-full bg-white">
-      {/* Header */}
+      {/* Header - Nome da lista ocupa todo o espaço central para truncar menos */}
       <div className="px-4 py-3 bg-white border-b flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-3">
-          <button onClick={onBack} className="p-1.5 -ml-2 text-slate-600 active:scale-90 transition-transform">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <button onClick={onBack} className="p-1.5 -ml-2 text-slate-600 active:scale-90 transition-transform shrink-0">
             <IconArrowLeft className="w-5 h-5" />
           </button>
-          <div className="flex items-center gap-2">
-            <span className="text-xl">{list.icon}</span>
-            <h1 className="font-black text-slate-800 text-lg truncate max-w-[140px] leading-tight">{list.name}</h1>
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <span className="text-xl shrink-0">{list.icon}</span>
+            <h1 className="font-black text-slate-800 text-lg truncate leading-tight flex-1">{list.name}</h1>
           </div>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 shrink-0 ml-2">
           {isNotifyEnabled && (
               <button 
                 onClick={() => setShowNotifyMenu(true)} 
@@ -279,23 +280,24 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
                        </div>
                     </div>
                   ) : (
-                    <div className="w-full flex items-center justify-between gap-4">
-                      <p className="text-sm font-black text-slate-700 truncate flex-1">{item.name}</p>
+                    <div className="w-full flex items-center justify-between">
+                      <p className="text-sm font-black text-slate-700 truncate flex-1 mr-2">{item.name}</p>
+                      
+                      {/* Ícones de ação entre nome e quantidade */}
+                      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                        <button onClick={() => startEditItem(item)} className="p-1 text-slate-300 hover:text-indigo-500"><IconEdit className="w-3.5 h-3.5"/></button>
+                        <button onClick={() => moveItem(item.id, 'up')} disabled={idx === 0} className="p-1 text-slate-300 hover:text-indigo-500 disabled:opacity-20"><IconChevronUp className="w-3.5 h-3.5"/></button>
+                        <button onClick={() => moveItem(item.id, 'down')} disabled={idx === activeItems.length - 1} className="p-1 text-slate-300 hover:text-indigo-500 disabled:opacity-20"><IconChevronDown className="w-3.5 h-3.5"/></button>
+                        <button onClick={() => deleteItem(item)} className="p-1 text-slate-300 hover:text-red-500 mr-1">
+                          <IconTrash className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      {/* Quantidade é sempre o último elemento à direita */}
                       <span className="text-indigo-600 font-black text-[11px] whitespace-nowrap shrink-0 bg-indigo-50 px-2 py-0.5 rounded">({item.quantity})</span>
                     </div>
                   )}
                 </div>
-
-                {!editingItemId && (
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-1">
-                    <button onClick={() => startEditItem(item)} className="p-1 text-slate-300 hover:text-indigo-500"><IconEdit className="w-3.5 h-3.5"/></button>
-                    <button onClick={() => moveItem(item.id, 'up')} disabled={idx === 0} className="p-1 text-slate-300 hover:text-indigo-500 disabled:opacity-30"><IconChevronUp className="w-3.5 h-3.5"/></button>
-                    <button onClick={() => moveItem(item.id, 'down')} disabled={idx === activeItems.length - 1} className="p-1 text-slate-300 hover:text-indigo-500 disabled:opacity-30"><IconChevronDown className="w-3.5 h-3.5"/></button>
-                    <button onClick={() => deleteItem(item.id)} className="p-1 text-slate-300 hover:text-red-500">
-                      <IconTrash className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                )}
               </div>
             ))
           )}
@@ -313,13 +315,15 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
                 <button onClick={() => toggleItem(item)} className="w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center shadow-sm shrink-0">
                   <IconCheck className="w-3 h-3 text-white" />
                 </button>
-                <div className="flex-1 min-w-0 flex items-center justify-between gap-4">
-                    <p className="text-sm line-through font-bold text-slate-500 truncate flex-1">{item.name}</p>
-                    <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap shrink-0">({item.quantity})</span>
+                <div className="flex-1 min-w-0 flex items-center justify-between">
+                    <p className="text-sm line-through font-bold text-slate-500 truncate flex-1 mr-2">{item.name}</p>
+                    <div className="flex items-center gap-2">
+                        <button onClick={() => deleteItem(item)} className="p-1 text-slate-300 hover:text-red-400 shrink-0 opacity-0 group-hover:opacity-100">
+                            <IconTrash className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap shrink-0">({item.quantity})</span>
+                    </div>
                 </div>
-                <button onClick={() => deleteItem(item.id)} className="p-1 text-slate-300 hover:text-red-400 shrink-0">
-                    <IconTrash className="w-3.5 h-3.5" />
-                </button>
               </div>
             ))}
           </div>
