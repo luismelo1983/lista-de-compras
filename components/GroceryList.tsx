@@ -57,7 +57,10 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
   };
 
   const addItem = (name: string, quantity: string) => {
-    if (!name.trim() || !quantity.trim()) return;
+    if (!name.trim() || !quantity.trim()) {
+        alert("Ops! Informe o nome do item e a quantidade para continuar.");
+        return;
+    }
     const qty = parseFloat(quantity) || 0;
     const maxOrder = list.items.length > 0 ? Math.max(...list.items.map(i => i.order ?? 0)) : 0;
     const newItem: GroceryItem = { 
@@ -224,8 +227,7 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
           />
           <button 
             onClick={() => addItem(newItemName, newItemQuantity)}
-            disabled={!newItemName.trim() || !newItemQuantity.trim()}
-            className="bg-indigo-600 text-white p-2 rounded-lg shadow-md disabled:opacity-30 active:scale-90 transition-transform"
+            className="bg-indigo-600 text-white p-2 rounded-lg shadow-md active:scale-90 transition-transform"
           >
             <IconPlus className="w-4 h-4" />
           </button>
@@ -277,15 +279,15 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
                        </div>
                     </div>
                   ) : (
-                    <div className="w-full flex justify-between items-center gap-2 overflow-hidden">
+                    <div className="w-full flex items-center justify-between gap-4">
                       <p className="text-sm font-black text-slate-700 truncate flex-1">{item.name}</p>
-                      <span className="text-indigo-600 font-black text-[11px] whitespace-nowrap shrink-0 bg-indigo-50 px-1.5 py-0.5 rounded">({item.quantity})</span>
+                      <span className="text-indigo-600 font-black text-[11px] whitespace-nowrap shrink-0 bg-indigo-50 px-2 py-0.5 rounded">({item.quantity})</span>
                     </div>
                   )}
                 </div>
 
                 {!editingItemId && (
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-1">
                     <button onClick={() => startEditItem(item)} className="p-1 text-slate-300 hover:text-indigo-500"><IconEdit className="w-3.5 h-3.5"/></button>
                     <button onClick={() => moveItem(item.id, 'up')} disabled={idx === 0} className="p-1 text-slate-300 hover:text-indigo-500 disabled:opacity-30"><IconChevronUp className="w-3.5 h-3.5"/></button>
                     <button onClick={() => moveItem(item.id, 'down')} disabled={idx === activeItems.length - 1} className="p-1 text-slate-300 hover:text-indigo-500 disabled:opacity-30"><IconChevronDown className="w-3.5 h-3.5"/></button>
@@ -311,7 +313,7 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
                 <button onClick={() => toggleItem(item)} className="w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center shadow-sm shrink-0">
                   <IconCheck className="w-3 h-3 text-white" />
                 </button>
-                <div className="flex-1 min-w-0 flex justify-between items-center gap-2 overflow-hidden">
+                <div className="flex-1 min-w-0 flex items-center justify-between gap-4">
                     <p className="text-sm line-through font-bold text-slate-500 truncate flex-1">{item.name}</p>
                     <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap shrink-0">({item.quantity})</span>
                 </div>

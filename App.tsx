@@ -8,7 +8,7 @@ import * as storageService from './services/storageService';
 import { User, GroceryList as GroceryListType, ViewState, Contact } from './types';
 import { IconShoppingBag, IconLogout } from './components/Icons';
 
-const APP_VERSION = "0.7.0"; 
+const APP_VERSION = "0.7.1"; 
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -166,7 +166,7 @@ const App: React.FC = () => {
         
         <div className="py-8 text-center mt-auto flex flex-col items-center">
             <span className="opacity-30 text-[9px] pointer-events-none uppercase font-bold tracking-widest">v{APP_VERSION} • a.Lista</span>
-            <span className="opacity-20 text-[8px] pointer-events-none uppercase font-black tracking-widest mt-0.5">from ASTRO</span>
+            <span className="opacity-40 text-[8px] pointer-events-none uppercase tracking-widest mt-1">from <span className="font-black">ASTRO</span></span>
         </div>
       </main>
     </div>
