@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Dashboard from './components/Dashboard';
 import GroceryList from './components/GroceryList';
@@ -8,7 +7,7 @@ import * as storageService from './services/storageService';
 import { User, GroceryList as GroceryListType, ViewState, Contact } from './types';
 import { IconShoppingBag, IconLogout } from './components/Icons';
 
-const APP_VERSION = "0.7.3"; 
+const APP_VERSION = "0.7.4"; 
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -49,7 +48,6 @@ const App: React.FC = () => {
               const installingWorker = registration.installing;
               if (installingWorker) {
                 installingWorker.onstatechange = () => {
-                  // Fix: navigator.whiteNavigator does not exist; using navigator.serviceWorker.controller
                   if (installingWorker.state === 'installed' && navigator.serviceWorker?.controller) {
                     setNewVersionAvailable(true);
                   }
@@ -163,7 +161,7 @@ const App: React.FC = () => {
                 <GroceryList list={selectedList} currentUser={currentUser} onBack={handleBack} onUpdate={storageService.saveList} />
             </div>
         )}
-        {currentView === ViewState.PROFILE && <UserProfile user={currentUser} onBack={handleBack} />}
+        {currentView === ViewState.PROFILE && <UserProfile user={currentUser} lists={lists} onBack={handleBack} />}
         
         <div className="py-8 text-center mt-auto flex flex-col items-center">
             <span className="opacity-30 text-[9px] pointer-events-none uppercase font-bold tracking-widest">v{APP_VERSION} • a.Lista</span>

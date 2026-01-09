@@ -2,8 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { GroceryList as GroceryListType, GroceryItem, User, Contact } from '../types';
 import { 
   IconArrowLeft, IconCheck, IconTrash, IconPlus, 
-  IconEdit, IconX, IconChevronUp, IconChevronDown, 
-  IconSettings, IconSortAlpha
+  IconEdit, IconX, IconSettings, IconSortAlpha, IconDrag
 } from './Icons';
 import * as storageService from '../services/storageService';
 
@@ -19,20 +18,13 @@ type NotificationType = "Lista pronta para providência" | "Em separação" | "N
 const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, onUpdate }) => {
   const [newItemName, setNewItemName] = useState('');
   const [newItemQuantity, setNewItemQuantity] = useState('');
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'config' | 'members' | 'params'>('config');
-  
-  const [shareEmail, setShareEmail] = useState('');
+  const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
   
   // Edição de Itens
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editItemName, setEditItemName] = useState('');
   const [editItemQty, setEditItemQty] = useState('');
 
-  // Parâmetros de aviso
-  const [webhookUrl, setWebhookUrl] = useState(list.webhookUrl || '');
-  const [contactName, setContactName] = useState(list.contactName || '');
-  const [contactPhone, setContactPhone] = useState(list.contactPhone || '');
   const [isNotifying, setIsNotifying] = useState(false);
   const [showNotifyMenu, setShowNotifyMenu] = useState(false);
 
@@ -56,11 +48,13 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
   };
 
   const addItem = (name: string, quantity: string) => {
-    if (!name.trim() || !quantity.trim()) {
-        alert("Ops! Informe o nome do item e a quantidade para continuar.");
+    if (!name.trim()) {
+        alert("Ops! Informe o nome do item.");
         return;
     }
-    const qty = parseFloat(quantity) || 0;
+    // Atribui 1 se quantidade estiver vazia
+    const qty = quantity.trim() === '' ? 1 : (parseFloat(quantity) || 1);
+    
     const maxOrder = list.items.length > 0 ? Math.max(...list.items.map(i => i.order ?? 0)) : 0;
     const newItem: GroceryItem = { 
       id: `i${Date.now() + Math.random()}`, 
@@ -92,7 +86,7 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
 
   const saveEditItem = (itemId: string) => {
     const updatedItems = list.items.map(i => 
-      i.id === itemId ? { ...i, name: editItemName.trim(), quantity: parseFloat(editItemQty) || 0 } : i
+      i.id === itemId ? { ...i, name: editItemName.trim(), quantity: parseFloat(editItemQty) || 1 } : i
     );
     onUpdate({ ...list, items: updatedItems });
     setEditingItemId(null);
@@ -107,19 +101,29 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
     onUpdate(updatedList);
   };
 
-  const handleAddShare = async () => {
-    if (!shareEmail.trim()) return;
-    await storageService.shareList(list.id, shareEmail.trim().toLowerCase());
-    setShareEmail('');
+  // Drag and Drop Logic
+  const handleDragStart = (index: number) => {
+    setDraggedItemIndex(index);
   };
 
-  const handleRemoveShare = async (email: string) => {
-    await storageService.unshareList(list.id, email);
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
   };
 
-  const handleSaveParams = async () => {
-    await storageService.updateListMetadata(list.id, list.name, list.icon, webhookUrl, contactName, contactPhone);
-    setIsSettingsOpen(false);
+  const handleDrop = (index: number) => {
+    if (draggedItemIndex === null) return;
+    const items = [...activeItems];
+    const draggedItem = items[draggedItemIndex];
+    items.splice(draggedItemIndex, 1);
+    items.splice(index, 0, draggedItem);
+    
+    // Update order values
+    items.forEach((it, idx) => {
+      it.order = idx;
+    });
+    
+    onUpdate({ ...list, items: [...items, ...completedItems] });
+    setDraggedItemIndex(null);
   };
 
   const handleNotify = async (type: NotificationType) => {
@@ -139,16 +143,13 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
                 user_sender: currentUser.name,
                 items_count: list.items.length,
                 pending_count: activeItems.length,
-                pending_items: activeItems.map(i => `${i.name} (${i.quantity ?? 1})`).join(', ')
+                pending_items: activeItems.map(i => `${i.name} (x${i.quantity ?? 1})`).join(', ')
             })
         });
-        if (response.ok) {
-            alert(`Aviso enviado com sucesso!`);
-        } else {
-            throw new Error();
-        }
+        if (response.ok) alert(`Aviso enviado com sucesso!`);
+        else throw new Error();
     } catch (e) {
-        alert("Falha ao enviar aviso. Verifique o Webhook.");
+        alert("Falha ao enviar aviso.");
     } finally {
         setIsNotifying(false);
     }
@@ -158,7 +159,7 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
 
   return (
     <div className="flex flex-col h-full bg-white">
-      {/* Header Otimizado */}
+      {/* Header Simplificado */}
       <div className="px-4 py-3 bg-white border-b flex items-center gap-2 sticky top-0 z-10">
         <button onClick={onBack} className="p-1.5 -ml-2 text-slate-600 active:scale-90 transition-transform shrink-0">
           <IconArrowLeft className="w-5 h-5" />
@@ -172,14 +173,11 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
               <button 
                 onClick={() => setShowNotifyMenu(true)} 
                 disabled={isNotifying}
-                className="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-md flex items-center gap-2 active:scale-95 transition-all"
+                className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg flex items-center gap-2 active:scale-95 transition-all"
               >
                 {isNotifying ? "..." : "Avisar"}
               </button>
           )}
-          <button onClick={() => { setIsSettingsOpen(true); setActiveTab('config'); }} className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg">
-            <IconSettings className="w-5 h-5" />
-          </button>
         </div>
       </div>
 
@@ -193,7 +191,7 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
               className="w-12 bg-white border border-slate-200 rounded-lg text-xs font-bold text-center py-1.5 outline-none focus:ring-2 focus:ring-indigo-500"
               value={newItemQuantity}
               onChange={e => setNewItemQuantity(e.target.value)}
-              placeholder=""
+              placeholder="1"
               min="1"
               step="any"
             />
@@ -231,8 +229,19 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
           {activeItems.length === 0 ? (
             <div className="text-center py-10 text-slate-400 italic text-sm">Nenhum item pendente.</div>
           ) : (
-            activeItems.map((item) => (
-              <div key={item.id} className={`group flex items-center gap-3 p-3 bg-white border rounded-2xl shadow-sm transition-all ${editingItemId === item.id ? 'ring-1 ring-indigo-500 border-indigo-200' : 'border-slate-50 hover:border-indigo-100'}`}>
+            activeItems.map((item, idx) => (
+              <div 
+                key={item.id} 
+                draggable
+                onDragStart={() => handleDragStart(idx)}
+                onDragOver={handleDragOver}
+                onDrop={() => handleDrop(idx)}
+                className={`group flex items-center gap-3 p-3 bg-white border rounded-2xl shadow-sm transition-all cursor-grab active:cursor-grabbing ${editingItemId === item.id ? 'ring-1 ring-indigo-500 border-indigo-200' : 'border-slate-50 hover:border-indigo-100'}`}
+              >
+                <div className="p-1 text-slate-300 hover:text-slate-400">
+                    <IconDrag className="w-4 h-4" />
+                </div>
+                
                 <button onClick={() => toggleItem(item)} className="w-6 h-6 border-2 border-slate-200 rounded-full flex items-center justify-center hover:border-indigo-500 bg-white shrink-0">
                 </button>
                 
@@ -243,7 +252,7 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
                          type="number" 
                          value={editItemQty} 
                          onChange={e => setEditItemQty(e.target.value)}
-                         className="w-14 bg-slate-50 border border-slate-200 rounded px-1.5 py-1 text-xs font-bold text-center outline-none focus:ring-1 focus:ring-indigo-500"
+                         className="w-14 bg-slate-50 border border-slate-200 rounded px-1.5 py-1 text-xs font-bold text-center outline-none"
                          step="any"
                        />
                        <input 
@@ -251,7 +260,7 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
                          type="text" 
                          value={editItemName} 
                          onChange={e => setEditItemName(e.target.value)}
-                         className="flex-1 bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs font-bold outline-none focus:ring-1 focus:ring-indigo-500"
+                         className="flex-1 bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs font-bold outline-none"
                          onKeyDown={e => e.key === 'Enter' && saveEditItem(item.id)}
                        />
                        <div className="flex gap-1 shrink-0">
@@ -263,7 +272,6 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
                     <div className="w-full flex items-center justify-between">
                       <p className="text-sm font-medium text-slate-700 truncate flex-1 mr-3">{item.name}</p>
                       
-                      {/* Ações e Quantidade à Direita */}
                       <div className="flex items-center gap-2 shrink-0">
                         <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button onClick={() => startEditItem(item)} className="p-1.5 text-slate-300 hover:text-indigo-500"><IconEdit className="w-4 h-4"/></button>
@@ -282,7 +290,7 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
         {/* Lista Comprada - OK's */}
         {completedItems.length > 0 && (
           <div className="space-y-2 pt-6">
-            <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex justify-between">
+            <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
               <span>OK's</span>
               <span className="bg-slate-100 px-2 py-0.5 rounded-full text-[8px] font-bold">{completedItems.length}</span>
             </h2>
@@ -306,7 +314,6 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
         )}
       </div>
 
-      {/* Menus e Modais permanecem funcionais */}
       {showNotifyMenu && (
           <div className="fixed inset-0 z-[110] bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
               <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom duration-300">
@@ -327,99 +334,6 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
                   </div>
               </div>
           </div>
-      )}
-
-      {/* Modal Settings */}
-      {isSettingsOpen && (
-        <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="flex border-b">
-              <button onClick={() => setActiveTab('config')} className={`flex-1 py-4 text-[9px] font-black uppercase tracking-widest transition-colors ${activeTab === 'config' ? 'text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50/30' : 'text-slate-400 hover:bg-slate-50'}`}>Lista</button>
-              <button onClick={() => setActiveTab('params')} className={`flex-1 py-4 text-[9px] font-black uppercase tracking-widest transition-colors ${activeTab === 'params' ? 'text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50/30' : 'text-slate-400 hover:bg-slate-50'}`}>Avisos</button>
-              <button onClick={() => setActiveTab('members')} className={`flex-1 py-4 text-[9px] font-black uppercase tracking-widest transition-colors ${activeTab === 'members' ? 'text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50/30' : 'text-slate-400 hover:bg-slate-50'}`}>Membros</button>
-            </div>
-
-            <div className="p-6 max-h-[75vh] overflow-y-auto">
-              {activeTab === 'config' && (
-                <div className="space-y-4">
-                   <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100 shadow-inner text-center">
-                      <p className="text-[10px] font-black text-slate-400 uppercase mb-3 tracking-widest">Responsável</p>
-                      <div className="flex flex-col items-center gap-2">
-                        <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-xl text-white font-black shadow-lg shadow-indigo-100">{list.ownerName?.charAt(0)}</div>
-                        <span className="text-sm font-black text-slate-800">{list.ownerName}</span>
-                      </div>
-                   </div>
-                   <button onClick={() => setIsSettingsOpen(false)} className="w-full bg-slate-100 py-3.5 rounded-2xl text-[10px] font-black text-slate-500 hover:bg-slate-200 uppercase tracking-widest transition-colors">Fechar</button>
-                </div>
-              )}
-
-              {activeTab === 'params' && (
-                  <div className="space-y-4">
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">BotConversa Webhook</p>
-                      <div className="space-y-3">
-                          <div>
-                              <label className="block text-[9px] font-black text-slate-500 uppercase mb-1">URL</label>
-                              <input 
-                                type="text" 
-                                value={webhookUrl}
-                                onChange={e => setWebhookUrl(e.target.value)}
-                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500"
-                              />
-                          </div>
-                          <div>
-                              <label className="block text-[9px] font-black text-slate-500 uppercase mb-1">Contato</label>
-                              <input 
-                                type="text" 
-                                value={contactName}
-                                onChange={e => setContactName(e.target.value)}
-                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500"
-                              />
-                          </div>
-                          <div>
-                              <label className="block text-[9px] font-black text-slate-500 uppercase mb-1">WhatsApp</label>
-                              <input 
-                                type="tel" 
-                                value={contactPhone}
-                                onChange={e => setContactPhone(e.target.value)}
-                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500"
-                              />
-                          </div>
-                      </div>
-                      <button onClick={handleSaveParams} className="w-full bg-indigo-600 text-white py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-[0.98] transition-all">Salvar Avisos</button>
-                  </div>
-              )}
-
-              {activeTab === 'members' && (
-                <div className="space-y-4">
-                   <div className="flex gap-2">
-                      <input 
-                        type="email" 
-                        placeholder="Email para convidar..." 
-                        className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500"
-                        value={shareEmail}
-                        onChange={e => setShareEmail(e.target.value)}
-                      />
-                      <button onClick={handleAddShare} className="bg-indigo-600 text-white px-3.5 rounded-2xl shadow-md active:scale-90 transition-transform"><IconPlus className="w-5 h-5"/></button>
-                   </div>
-                   <div className="space-y-2 pt-2">
-                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Membros Ativos</h4>
-                      <div className="flex items-center justify-between p-3.5 bg-indigo-50 border border-indigo-100 rounded-2xl">
-                        <span className="text-[10px] font-black text-indigo-900">{list.ownerName} (Dono)</span>
-                        <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
-                      </div>
-                      {list.sharedWith?.map(email => (
-                        <div key={email} className="flex items-center justify-between p-3.5 border border-slate-100 rounded-2xl group hover:border-indigo-200 transition-colors">
-                          <span className="text-[10px] text-slate-600 font-bold truncate max-w-[200px]">{email}</span>
-                          <button onClick={() => handleRemoveShare(email)} className="text-slate-300 hover:text-red-500 p-1.5 transition-colors"><IconTrash className="w-4 h-4"/></button>
-                        </div>
-                      ))}
-                   </div>
-                   <button onClick={() => setIsSettingsOpen(false)} className="w-full bg-slate-100 py-3.5 rounded-2xl text-[10px] font-black text-slate-500 uppercase mt-4">Sair</button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );
