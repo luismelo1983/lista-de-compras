@@ -1,5 +1,12 @@
-
 import React from 'react';
+
+export const IconLogo = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 512 512" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M130 185l25 25l50 -50" stroke="#f48120" strokeWidth="45" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M130 285l25 25l50 -50" stroke="#76e082" strokeWidth="45" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M130 385l25 25l50 -50" stroke="#55a6f1" strokeWidth="45" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
 
 export const IconPlus = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M5 12h14"/><path d="M12 5v14"/></svg>

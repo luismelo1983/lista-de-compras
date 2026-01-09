@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { IconShoppingBag, IconEye, IconEyeOff } from './Icons';
+import { IconLogo, IconEye, IconEyeOff } from './Icons';
 import * as storageService from '../services/storageService';
 import { User } from '../types';
 
@@ -68,8 +68,8 @@ const Auth: React.FC<AuthProps> = ({ onLoginSuccess }) => {
       <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-7 border border-slate-100">
         
         <div className="flex flex-col items-center mb-8">
-            <div className="bg-indigo-600 p-3 rounded-2xl text-white shadow-xl shadow-indigo-100 mb-4 animate-bounce">
-                <IconShoppingBag className="w-7 h-7" />
+            <div className="bg-indigo-600 p-2 rounded-2xl text-white shadow-xl shadow-indigo-100 mb-4 animate-bounce">
+                <IconLogo className="w-8 h-8" />
             </div>
             <h1 className="text-3xl font-black text-slate-800 tracking-tighter leading-none">a.Lista</h1>
             <p className="text-slate-400 text-[11px] font-bold mt-2 lowercase">o poder das listas</p>

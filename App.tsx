@@ -5,9 +5,9 @@ import Auth from './components/Auth';
 import UserProfile from './components/UserProfile';
 import * as storageService from './services/storageService';
 import { User, GroceryList as GroceryListType, ViewState, Contact } from './types';
-import { IconShoppingBag, IconLogout } from './components/Icons';
+import { IconLogo, IconLogout } from './components/Icons';
 
-const APP_VERSION = "0.7.4"; 
+const APP_VERSION = "0.7.5"; 
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -132,7 +132,9 @@ const App: React.FC = () => {
       <nav className="bg-white border-b border-slate-200 sticky top-0 z-50 h-14">
         <div className="max-w-5xl mx-auto px-4 h-full flex items-center justify-between">
             <div className="flex items-center space-x-2 cursor-pointer group" onClick={() => navigateTo(ViewState.DASHBOARD)}>
-                <div className="bg-indigo-600 p-1.5 rounded-lg text-white shadow-md shadow-indigo-100 group-hover:scale-105 transition-transform"><IconShoppingBag className="w-4 h-4" /></div>
+                <div className="bg-indigo-600 p-1 rounded-lg text-white shadow-md shadow-indigo-100 group-hover:scale-105 transition-transform">
+                  <IconLogo className="w-5 h-5" />
+                </div>
                 <span className="font-black text-xl tracking-tighter text-slate-800">a.Lista</span>
             </div>
 

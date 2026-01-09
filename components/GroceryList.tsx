@@ -52,7 +52,6 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
         alert("Ops! Informe o nome do item.");
         return;
     }
-    // Atribui 1 se quantidade estiver vazia
     const qty = quantity.trim() === '' ? 1 : (parseFloat(quantity) || 1);
     
     const maxOrder = list.items.length > 0 ? Math.max(...list.items.map(i => i.order ?? 0)) : 0;
@@ -101,7 +100,6 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
     onUpdate(updatedList);
   };
 
-  // Drag and Drop Logic
   const handleDragStart = (index: number) => {
     setDraggedItemIndex(index);
   };
@@ -117,7 +115,6 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
     items.splice(draggedItemIndex, 1);
     items.splice(index, 0, draggedItem);
     
-    // Update order values
     items.forEach((it, idx) => {
       it.order = idx;
     });
@@ -159,7 +156,6 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
 
   return (
     <div className="flex flex-col h-full bg-white">
-      {/* Header Simplificado */}
       <div className="px-4 py-3 bg-white border-b flex items-center gap-2 sticky top-0 z-10">
         <button onClick={onBack} className="p-1.5 -ml-2 text-slate-600 active:scale-90 transition-transform shrink-0">
           <IconArrowLeft className="w-5 h-5" />
@@ -182,7 +178,6 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-24">
-        {/* Input Manual */}
         <div className="flex gap-2 bg-slate-50 p-2 rounded-2xl border border-slate-100 items-center shadow-inner">
           <div className="flex items-center gap-1 border-r border-slate-200 pr-2">
             <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter mr-1">Qtd</span>
@@ -212,12 +207,11 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
           </button>
         </div>
 
-        {/* Lista Ativa */}
         <div className="space-y-2">
           <div className="flex justify-between items-center mb-2">
             <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
               <span>PENDENTES</span>
-              <span className="bg-slate-100 px-2 py-0.5 rounded-full text-[8px] font-bold">{activeItems.length}</span>
+              <span className="bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full text-[8px] font-black">{activeItems.length}</span>
             </h2>
             <button 
               onClick={sortActiveAlphabetically}
@@ -232,27 +226,31 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
             activeItems.map((item, idx) => (
               <div 
                 key={item.id} 
-                draggable
+                draggable={editingItemId !== item.id}
                 onDragStart={() => handleDragStart(idx)}
                 onDragOver={handleDragOver}
                 onDrop={() => handleDrop(idx)}
-                className={`group flex items-center gap-3 p-3 bg-white border rounded-2xl shadow-sm transition-all cursor-grab active:cursor-grabbing ${editingItemId === item.id ? 'ring-1 ring-indigo-500 border-indigo-200' : 'border-slate-50 hover:border-indigo-100'}`}
+                className={`group flex items-center gap-3 p-3 bg-white border rounded-2xl shadow-sm transition-all ${editingItemId === item.id ? 'ring-2 ring-indigo-500 border-indigo-200 cursor-default' : 'border-slate-50 hover:border-indigo-100 cursor-grab active:cursor-grabbing'}`}
               >
-                <div className="p-1 text-slate-300 hover:text-slate-400">
-                    <IconDrag className="w-4 h-4" />
-                </div>
+                {editingItemId !== item.id && (
+                  <div className="p-1 text-slate-300 hover:text-slate-400 shrink-0">
+                      <IconDrag className="w-4 h-4" />
+                  </div>
+                )}
                 
-                <button onClick={() => toggleItem(item)} className="w-6 h-6 border-2 border-slate-200 rounded-full flex items-center justify-center hover:border-indigo-500 bg-white shrink-0">
-                </button>
+                {editingItemId !== item.id && (
+                  <button onClick={() => toggleItem(item)} className="w-6 h-6 border-2 border-slate-200 rounded-full flex items-center justify-center hover:border-indigo-500 bg-white shrink-0">
+                  </button>
+                )}
                 
                 <div className="flex-1 min-w-0">
                   {editingItemId === item.id ? (
-                    <div className="flex items-center gap-2 w-full">
+                    <div className="flex items-center gap-2 w-full animate-in slide-in-from-left-1">
                        <input 
                          type="number" 
                          value={editItemQty} 
                          onChange={e => setEditItemQty(e.target.value)}
-                         className="w-14 bg-slate-50 border border-slate-200 rounded px-1.5 py-1 text-xs font-bold text-center outline-none"
+                         className="w-14 bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 text-sm font-black text-center outline-none focus:ring-2 focus:ring-indigo-500 shrink-0"
                          step="any"
                        />
                        <input 
@@ -260,12 +258,12 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
                          type="text" 
                          value={editItemName} 
                          onChange={e => setEditItemName(e.target.value)}
-                         className="flex-1 bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs font-bold outline-none"
+                         className="flex-1 min-w-0 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500"
                          onKeyDown={e => e.key === 'Enter' && saveEditItem(item.id)}
                        />
                        <div className="flex gap-1 shrink-0">
-                          <button onClick={() => saveEditItem(item.id)} className="text-emerald-500 p-1"><IconCheck className="w-4 h-4" /></button>
-                          <button onClick={() => setEditingItemId(null)} className="text-red-400 p-1"><IconX className="w-4 h-4" /></button>
+                          <button onClick={() => saveEditItem(item.id)} className="bg-emerald-500 text-white p-2 rounded-lg shadow-sm active:scale-90 transition-transform"><IconCheck className="w-4 h-4" /></button>
+                          <button onClick={() => setEditingItemId(null)} className="bg-red-50 text-red-500 p-2 rounded-lg active:scale-90 transition-transform"><IconX className="w-4 h-4" /></button>
                        </div>
                     </div>
                   ) : (
@@ -287,7 +285,6 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
           )}
         </div>
 
-        {/* Lista Comprada - OK's */}
         {completedItems.length > 0 && (
           <div className="space-y-2 pt-6">
             <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
