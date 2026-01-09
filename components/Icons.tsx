@@ -1,10 +1,21 @@
 import React from 'react';
 
 export const IconLogo = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 512 512" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M130 185l25 25l50 -50" stroke="#f48120" strokeWidth="45" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M130 285l25 25l50 -50" stroke="#76e082" strokeWidth="45" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M130 385l25 25l50 -50" stroke="#55a6f1" strokeWidth="45" strokeLinecap="round" strokeLinejoin="round"/>
+  <svg viewBox="0 0 512 512" className={className} xmlns="http://www.w3.org/2000/svg">
+    <rect width="512" height="512" rx="120" fill="#ffffff"/>
+    <g transform="translate(40, 40)">
+      {/* Linha 1: Laranja */}
+      <path d="M70 145l25 25l50 -50" stroke="#f48120" strokeWidth="35" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+      <rect x="185" y="145" width="180" height="28" rx="14" fill="#fcc233"/>
+      
+      {/* Linha 2: Verde */}
+      <path d="M70 245l25 25l50 -50" stroke="#76e082" strokeWidth="35" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+      <rect x="185" y="245" width="180" height="28" rx="14" fill="#76e082"/>
+      
+      {/* Linha 3: Azul */}
+      <path d="M70 345l25 25l50 -50" stroke="#55a6f1" strokeWidth="35" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+      <rect x="185" y="345" width="180" height="28" rx="14" fill="#55a6f1"/>
+    </g>
   </svg>
 );
 
