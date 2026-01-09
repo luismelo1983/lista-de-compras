@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Dashboard from './components/Dashboard';
 import GroceryList from './components/GroceryList';
@@ -7,7 +8,7 @@ import * as storageService from './services/storageService';
 import { User, GroceryList as GroceryListType, ViewState, Contact } from './types';
 import { IconShoppingBag, IconLogout } from './components/Icons';
 
-const APP_VERSION = "0.7.2"; 
+const APP_VERSION = "0.7.3"; 
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -48,7 +49,8 @@ const App: React.FC = () => {
               const installingWorker = registration.installing;
               if (installingWorker) {
                 installingWorker.onstatechange = () => {
-                  if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  // Fix: navigator.whiteNavigator does not exist; using navigator.serviceWorker.controller
+                  if (installingWorker.state === 'installed' && navigator.serviceWorker?.controller) {
                     setNewVersionAvailable(true);
                   }
                 };
