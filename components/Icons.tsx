@@ -3,7 +3,7 @@ import React from 'react';
 export const IconLogo = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 512 512" className={className} xmlns="http://www.w3.org/2000/svg">
     <rect width="512" height="512" rx="120" fill="#ffffff"/>
-    <g transform="translate(40, 40)">
+    <g transform="translate(38.5, 37)">
       {/* Linha 1: Laranja */}
       <path d="M70 145l25 25l50 -50" stroke="#f48120" strokeWidth="35" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
       <rect x="185" y="145" width="180" height="28" rx="14" fill="#fcc233"/>

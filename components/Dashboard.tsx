@@ -22,7 +22,7 @@ const EMOJI_OPTIONS = [
     '🧤', '🧦', '🧣', '🌂', '🧵', '🧶', '🪡', '🧺', '🪣', '🧽', '🚽', '🍳', 
     '🧇', '🍖', '🥪', '🥗', '🍿', '🧃', '🧉', '🍱', '🍥', '🍙', '🍘', '🦑', 
     '🦐', '🦀', '🐡', '🐠', '🐟', '🐄', '🐖', '🐑', '🐓', '🦆', '🦉', '🦋', 
-    '🐝', '🐞', '🦗', '🕷️', '🕸️', '🦂', '🐢', '🦎', '🐍', '🦜', '🕊️', '🐇', 
+    '🐝', '🐞', '🦗', '🕷️', '🕸️', '蠍', '🐢', '🦎', '🐍', '🦜', '🕊️', '🐇', 
     '🐹', '🐭', '🐱', '🐶',
     '🪥', '🪒', '🚿', '🛀', '🧼', '🧴', '🧻', '🚽', '🧺', '🧹', '🪣', '🧼', '🧤',
     '💻', '🖱️', '⌨️', '📱', '🔋', '🔌', '💡', '🔦', '🕯️', '📺', '📻', '📷',
@@ -46,7 +46,8 @@ const Dashboard: React.FC<DashboardProps> = ({ lists, currentUser, onSelectKey, 
   const [editIcon, setEditIcon] = useState('');
   
   const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Boa dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
+  // Corrigido de "Boa dia" para "Bom dia"
+  const greeting = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
 
   const handleCreateSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();

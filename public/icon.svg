@@ -7,7 +7,8 @@
   <!-- Background Card -->
   <rect width="512" height="512" rx="120" fill="#ffffff"/>
   
-  <g transform="translate(110, 130)">
+  <!-- Transformado para centralização matemática perfeita (translate: 88.5, 87) -->
+  <g transform="translate(88.5, 87)">
     <!-- Item 1: Laranja/Amarelo -->
     <path d="M20 55l25 25l50 -50" stroke="#f48120" stroke-width="32" stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#softShadow)"/>
     <rect x="135" y="55" width="180" height="28" rx="14" fill="#fcc233" filter="url(#softShadow)"/>
