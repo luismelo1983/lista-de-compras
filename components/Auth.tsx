@@ -86,12 +86,12 @@ const Auth: React.FC<AuthProps> = ({ onLoginSuccess, onNavigateSales }) => {
         </form>
 
         <div className="mt-8 text-center">
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-2">Novo por aqui?</p>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-2">novo por aqui?</p>
             <button 
                 onClick={onNavigateSales}
                 className="text-indigo-600 font-black text-xs uppercase underline decoration-2 underline-offset-4 hover:text-indigo-800"
             >
-                Assine aLista e Comece Agora!
+                assine aLista e comece agora!
             </button>
         </div>
       </div>

@@ -4,7 +4,6 @@ import {
     createUserWithEmailAndPassword, 
     signOut, 
     updateProfile, 
-    updatePassword,
     onAuthStateChanged,
     User as FirebaseUser
   } from 'firebase/auth';
@@ -20,12 +19,15 @@ import {
     serverTimestamp,
     getDoc,
     setDoc,
-    getDocs
+    getDocs,
+    limit
   } from 'firebase/firestore';
   import { auth, db } from './firebase';
   import { GroceryList, User, ListPrivilege } from '../types';
   
-  const mapUser = async (fbUser: FirebaseUser): Promise<User> => {
+  const mapUser = async (fbUser: FirebaseUser | any, isVirtual = false): Promise<User> => {
+      if (isVirtual) return fbUser;
+
       const userDoc = await getDoc(doc(db, 'users', fbUser.uid));
       const userData = userDoc.data();
       const seed = fbUser.displayName || fbUser.email || 'User';
@@ -49,6 +51,17 @@ import {
   };
   
   export const onAuthChange = (callback: (user: User | null) => void) => {
+      const virtualUserJson = localStorage.getItem('alistasession_member');
+      if (virtualUserJson) {
+          try {
+              const virtualUser = JSON.parse(virtualUserJson);
+              callback(virtualUser);
+              return () => {};
+          } catch(e) {
+              localStorage.removeItem('alistasession_member');
+          }
+      }
+
       return onAuthStateChanged(auth, async (fbUser) => {
           if (fbUser) {
               const user = await mapUser(fbUser);
@@ -60,50 +73,88 @@ import {
   };
   
   export const login = async (email: string, password: string): Promise<User> => {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = await mapUser(userCredential.user);
-      // Sincroniza dados extras se necessário
-      return user;
+      try {
+          const userCredential = await signInWithEmailAndPassword(auth, email, password);
+          return await mapUser(userCredential.user);
+      } catch (authError) {
+          const q = query(collection(db, 'users'), where('email', '==', email.toLowerCase()), limit(1));
+          const snapshot = await getDocs(q);
+          
+          if (!snapshot.empty) {
+              const userDoc = snapshot.docs[0];
+              const userData = userDoc.data();
+              
+              if (userData.password === password) {
+                  const virtualUser: User = {
+                      id: userDoc.id,
+                      name: userData.name,
+                      email: userData.email,
+                      phone: userData.phone,
+                      avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${userData.name}`,
+                      color: 'bg-indigo-500',
+                      role: userData.role || 'child',
+                      masterId: userData.masterId,
+                      status: userData.status || 'active',
+                      planType: 'premium',
+                      listPermissions: userData.listPermissions || {}
+                  };
+                  localStorage.setItem('alistasession_member', JSON.stringify(virtualUser));
+                  window.location.reload(); 
+                  return virtualUser;
+              }
+          }
+          throw new Error('E-mail ou senha inválidos.');
+      }
   };
 
-  export const registerMaster = async (name: string, email: string, password: string, plan: any): Promise<void> => {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const uid = userCredential.user.uid;
-      
-      await updateProfile(userCredential.user, {
-          displayName: name,
-          photoURL: `https://api.dicebear.com/7.x/initials/svg?seed=${name}`
-      });
-
-      await setDoc(doc(db, 'users', uid), {
-          name,
-          email,
-          role: 'master',
-          masterId: uid,
-          status: 'active',
-          planType: plan.type,
-          expiresAt: plan.expiresAt,
-          paymentSource: plan.source,
-          createdAt: serverTimestamp()
-      });
+  export const createMasterUser = async (data: { name: string, email: string, phone: string, password: string }): Promise<void> => {
+    // Admin cria um master manual (virtual para protótipo)
+    const newUserId = `master_${Date.now()}`;
+    await setDoc(doc(db, 'users', newUserId), {
+        name: data.name,
+        email: data.email.toLowerCase(),
+        phone: data.phone,
+        password: data.password,
+        role: 'master',
+        masterId: newUserId,
+        status: 'active',
+        planType: 'premium',
+        createdAt: serverTimestamp()
+    });
   };
 
   export const createChildUser = async (masterUser: User, childData: { name: string, email: string, phone: string, password: string, listPermissions: Record<string, ListPrivilege> }): Promise<void> => {
-    // Nota: Firebase Client SDK não permite criar outro usuário sem deslogar. 
-    // Em produção real, isso usaria Firebase Admin SDK / Cloud Functions.
-    // Simulamos salvando no Firestore. O usuário usará esse email/pass no login.
-    const tempId = `user_${Date.now()}`; 
-    await setDoc(doc(db, 'users', tempId), {
+    const newUserId = `member_${Date.now()}`; 
+    await setDoc(doc(db, 'users', newUserId), {
         name: childData.name,
-        email: childData.email,
+        email: childData.email.toLowerCase(),
         phone: childData.phone,
+        password: childData.password, 
         role: 'child',
         masterId: masterUser.id,
         status: 'active',
         listPermissions: childData.listPermissions,
         createdAt: serverTimestamp()
     });
-    alert("Dados do membro salvos. Em um sistema real, a conta de autenticação seria gerada via API.");
+  };
+
+  export const updateChildUser = async (userId: string, data: Partial<User>): Promise<void> => {
+    await updateDoc(doc(db, 'users', userId), data);
+  };
+
+  export const deleteUser = async (userId: string): Promise<void> => {
+    await deleteDoc(doc(db, 'users', userId));
+  };
+
+  export const getGroupMembers = (masterId: string, onUpdate: (members: User[]) => void) => {
+    const q = query(collection(db, 'users'), where('masterId', '==', masterId), where('role', '==', 'child'));
+    return onSnapshot(q, (snapshot) => {
+      const members: User[] = [];
+      snapshot.forEach(d => {
+        members.push({ id: d.id, ...d.data() } as User);
+      });
+      onUpdate(members);
+    });
   };
 
   export const getAllUsersForAdmin = async (): Promise<User[]> => {
@@ -126,19 +177,18 @@ import {
   };
   
   export const logout = async (): Promise<void> => {
+      localStorage.removeItem('alistasession_member');
       await signOut(auth);
+      window.location.reload(); 
   };
   
   export const subscribeToLists = (user: User, onUpdate: (lists: GroceryList[]) => void) => {
-      const q = user.role === 'child' 
-        ? query(collection(db, 'lists'), where('userId', '==', user.masterId))
-        : query(collection(db, 'lists'), where('userId', '==', user.id));
+      const q = query(collection(db, 'lists'), where('userId', '==', user.masterId));
 
       return onSnapshot(q, (snapshot) => {
           const lists: GroceryList[] = [];
           snapshot.forEach((doc) => {
               const data = doc.data();
-              // Se for child, só vê se tiver permissão != 'none'
               if (user.role === 'child') {
                   const perm = user.listPermissions?.[doc.id] || 'none';
                   if (perm === 'none') return;
@@ -164,7 +214,7 @@ import {
       if (user.role === 'child') return;
       await addDoc(collection(db, 'lists'), {
           name,
-          userId: user.id,
+          userId: user.id, 
           icon: icon || '📝',
           items: [],
           order: Date.now(),

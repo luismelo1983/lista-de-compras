@@ -7,6 +7,7 @@ export interface User {
   name: string;
   email: string;
   phone?: string;
+  password?: string; // Necessário para login de membros no protótipo (sem Cloud Functions)
   avatar: string;
   color: string;
   role: UserRole;
@@ -15,7 +16,6 @@ export interface User {
   planType?: 'mensal' | 'anual' | 'degustacao' | 'premium';
   paymentSource?: string;
   expiresAt?: number;
-  // Permissões específicas por ID de lista
   listPermissions?: Record<string, ListPrivilege>;
 }
 
@@ -51,7 +51,6 @@ export interface GroceryList {
   contacts?: Contact[];
 }
 
-// Fix: Added GeminiSuggestion interface which was missing and causing a compilation error in geminiService.ts
 export interface GeminiSuggestion {
   name: string;
   category: string;
