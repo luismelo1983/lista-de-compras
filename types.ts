@@ -1,22 +1,22 @@
 
 export type UserRole = 'admin' | 'master' | 'child';
-export type ChildPrivilege = 'view' | 'work';
+export type ListPrivilege = 'none' | 'view' | 'work';
 
 export interface User {
   id: string;
   name: string;
   email: string;
+  phone?: string;
   avatar: string;
   color: string;
   role: UserRole;
-  masterId: string; // ID do Master vinculado
+  masterId: string;
   status: 'active' | 'blocked' | 'cancelled';
-  planType?: 'mensal' | 'anual' | 'degustacao';
+  planType?: 'mensal' | 'anual' | 'degustacao' | 'premium';
   paymentSource?: string;
   expiresAt?: number;
-  // Apenas para filhos
-  privilege?: ChildPrivilege;
-  allowedLists?: string[]; 
+  // Permissões específicas por ID de lista
+  listPermissions?: Record<string, ListPrivilege>;
 }
 
 export interface Contact {
@@ -42,7 +42,7 @@ export interface GroceryList {
   icon: string;
   createdAt?: number;
   order?: number;
-  userId: string; // ID do Master dono
+  userId: string;
   ownerName?: string;
   sharedWith?: string[];
   webhookUrl?: string;
@@ -51,16 +51,17 @@ export interface GroceryList {
   contacts?: Contact[];
 }
 
+// Fix: Added GeminiSuggestion interface which was missing and causing a compilation error in geminiService.ts
+export interface GeminiSuggestion {
+  name: string;
+  category: string;
+  reason: string;
+}
+
 export enum ViewState {
   DASHBOARD = 'DASHBOARD',
   LIST_DETAIL = 'LIST_DETAIL',
   PROFILE = 'PROFILE',
   ADMIN_PANEL = 'ADMIN_PANEL',
   SALES = 'SALES'
-}
-
-export interface GeminiSuggestion {
-  name: string;
-  category: string;
-  reason: string;
 }

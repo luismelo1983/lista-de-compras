@@ -23,29 +23,28 @@ import {
     getDocs
   } from 'firebase/firestore';
   import { auth, db } from './firebase';
-  import { GroceryList, User, UserRole, ChildPrivilege } from '../types';
+  import { GroceryList, User, ListPrivilege } from '../types';
   
   const mapUser = async (fbUser: FirebaseUser): Promise<User> => {
       const userDoc = await getDoc(doc(db, 'users', fbUser.uid));
       const userData = userDoc.data();
       const seed = fbUser.displayName || fbUser.email || 'User';
 
-      // Admin padrão
       const isAdmin = fbUser.email === 'teste@teste.com';
       
       return {
           id: fbUser.uid,
-          name: fbUser.displayName || 'Usuário',
+          name: fbUser.displayName || userData?.name || 'Usuário',
           email: fbUser.email || '',
+          phone: userData?.phone || '',
           avatar: fbUser.photoURL || `https://api.dicebear.com/7.x/initials/svg?seed=${seed}`,
           color: 'bg-indigo-500',
           role: isAdmin ? 'admin' : (userData?.role || 'master'),
           masterId: userData?.masterId || fbUser.uid,
           status: userData?.status || 'active',
-          planType: userData?.planType || 'degustacao',
-          expiresAt: userData?.expiresAt || (Date.now() + 7 * 24 * 60 * 60 * 1000),
-          privilege: userData?.privilege,
-          allowedLists: userData?.allowedLists || []
+          planType: isAdmin ? 'premium' : (userData?.planType || 'degustacao'),
+          expiresAt: isAdmin ? undefined : (userData?.expiresAt || (Date.now() + 7 * 24 * 60 * 60 * 1000)),
+          listPermissions: userData?.listPermissions || {}
       };
   };
   
@@ -62,10 +61,11 @@ import {
   
   export const login = async (email: string, password: string): Promise<User> => {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      return await mapUser(userCredential.user);
+      const user = await mapUser(userCredential.user);
+      // Sincroniza dados extras se necessário
+      return user;
   };
 
-  // Cadastro removido da UI pública, mas mantido para fluxos automáticos/ADM
   export const registerMaster = async (name: string, email: string, password: string, plan: any): Promise<void> => {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const uid = userCredential.user.uid;
@@ -76,6 +76,8 @@ import {
       });
 
       await setDoc(doc(db, 'users', uid), {
+          name,
+          email,
           role: 'master',
           masterId: uid,
           status: 'active',
@@ -86,27 +88,22 @@ import {
       });
   };
 
-  export const createChildUser = async (masterUser: User, childData: { name: string, email: string, password: string, privilege: ChildPrivilege, allowedLists: string[] }): Promise<void> => {
-    // Nota: Firebase Client SDK não permite criar outro usuário sem deslogar o atual.
-    // Em um SaaS real, isso seria feito via Cloud Function (Admin SDK).
-    // Aqui simularemos criando o registro na coleção 'users'. 
-    // O usuário precisará fazer o primeiro login para ativar o Auth se usarmos Email/Pass.
-    // Para simplificar o protótipo, vamos criar o registro de metadados.
-    
-    // ATENÇÃO: Em produção, use Firebase Admin SDK em uma Cloud Function.
-    alert("Funcionalidade de criação de filhos requer Cloud Functions em produção. Os dados foram salvos no Firestore.");
-    
-    const tempId = `child_${Date.now()}`;
+  export const createChildUser = async (masterUser: User, childData: { name: string, email: string, phone: string, password: string, listPermissions: Record<string, ListPrivilege> }): Promise<void> => {
+    // Nota: Firebase Client SDK não permite criar outro usuário sem deslogar. 
+    // Em produção real, isso usaria Firebase Admin SDK / Cloud Functions.
+    // Simulamos salvando no Firestore. O usuário usará esse email/pass no login.
+    const tempId = `user_${Date.now()}`; 
     await setDoc(doc(db, 'users', tempId), {
         name: childData.name,
         email: childData.email,
+        phone: childData.phone,
         role: 'child',
         masterId: masterUser.id,
         status: 'active',
-        privilege: childData.privilege,
-        allowedLists: childData.allowedLists,
+        listPermissions: childData.listPermissions,
         createdAt: serverTimestamp()
     });
+    alert("Dados do membro salvos. Em um sistema real, a conta de autenticação seria gerada via API.");
   };
 
   export const getAllUsersForAdmin = async (): Promise<User[]> => {
@@ -114,7 +111,12 @@ import {
     const users: User[] = [];
     snapshot.forEach(d => {
         const data = d.data();
-        users.push({ id: d.id, ...data } as any);
+        users.push({ 
+            id: d.id, 
+            ...data, 
+            name: data.name || 'Sem nome',
+            email: data.email || 'Sem email'
+        } as any);
     });
     return users;
   };
@@ -128,7 +130,6 @@ import {
   };
   
   export const subscribeToLists = (user: User, onUpdate: (lists: GroceryList[]) => void) => {
-      // Regra: Master vê suas listas. Filho vê apenas as 'allowedLists'.
       const q = user.role === 'child' 
         ? query(collection(db, 'lists'), where('userId', '==', user.masterId))
         : query(collection(db, 'lists'), where('userId', '==', user.id));
@@ -137,8 +138,11 @@ import {
           const lists: GroceryList[] = [];
           snapshot.forEach((doc) => {
               const data = doc.data();
-              // Filtro de visibilidade para Filhos
-              if (user.role === 'child' && !user.allowedLists?.includes(doc.id)) return;
+              // Se for child, só vê se tiver permissão != 'none'
+              if (user.role === 'child') {
+                  const perm = user.listPermissions?.[doc.id] || 'none';
+                  if (perm === 'none') return;
+              }
 
               lists.push({
                   id: doc.id,
@@ -177,7 +181,13 @@ import {
 
   export const updateListMetadata = async (listId: string, name: string, icon?: string, webhookUrl?: string, contactName?: string, contactPhone?: string): Promise<void> => {
       const listRef = doc(db, 'lists', listId);
-      await updateDoc(listRef, { name, icon, webhookUrl, contactName, contactPhone });
+      const updateData: any = { name };
+      if (icon) updateData.icon = icon;
+      if (webhookUrl !== undefined) updateData.webhookUrl = webhookUrl;
+      if (contactName !== undefined) updateData.contactName = contactName;
+      if (contactPhone !== undefined) updateData.contactPhone = contactPhone;
+      
+      await updateDoc(listRef, updateData);
   };
   
   export const deleteList = async (listId: string): Promise<void> => {
@@ -186,12 +196,4 @@ import {
 
   export const updateListOrder = async (listId: string, newOrder: number): Promise<void> => {
       await updateDoc(doc(db, 'lists', listId), { order: newOrder });
-  };
-
-  export const updateUserProfileName = async (name: string): Promise<void> => {
-    if (auth.currentUser) await updateProfile(auth.currentUser, { displayName: name });
-  };
-
-  export const updateUserPassword = async (newPassword: string): Promise<void> => {
-    if (auth.currentUser) await updatePassword(auth.currentUser, newPassword);
   };
