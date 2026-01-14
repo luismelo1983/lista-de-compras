@@ -20,7 +20,8 @@ import {
     getDoc,
     setDoc,
     getDocs,
-    limit
+    limit,
+    orderBy
   } from 'firebase/firestore';
   import { auth, db } from './firebase';
   import { GroceryList, User, ListPrivilege } from '../types';
@@ -51,6 +52,7 @@ import {
   };
   
   export const onAuthChange = (callback: (user: User | null) => void) => {
+      // Prioridade 1: Sessão Virtual (Membros/Masters criados via Admin/Master)
       const virtualUserJson = localStorage.getItem('alistasession_member');
       if (virtualUserJson) {
           try {
@@ -62,6 +64,7 @@ import {
           }
       }
 
+      // Prioridade 2: Firebase Auth Real
       return onAuthStateChanged(auth, async (fbUser) => {
           if (fbUser) {
               const user = await mapUser(fbUser);
@@ -73,11 +76,15 @@ import {
   };
   
   export const login = async (email: string, password: string): Promise<User> => {
+      const cleanEmail = email.trim().toLowerCase();
+      
       try {
-          const userCredential = await signInWithEmailAndPassword(auth, email, password);
+          // 1. Tenta Login Real (Firebase Auth)
+          const userCredential = await signInWithEmailAndPassword(auth, cleanEmail, password);
           return await mapUser(userCredential.user);
       } catch (authError) {
-          const q = query(collection(db, 'users'), where('email', '==', email.toLowerCase()), limit(1));
+          // 2. Tenta Login Virtual (Firestore Query)
+          const q = query(collection(db, 'users'), where('email', '==', cleanEmail), limit(1));
           const snapshot = await getDocs(q);
           
           if (!snapshot.empty) {
@@ -95,7 +102,7 @@ import {
                       role: userData.role || 'child',
                       masterId: userData.masterId,
                       status: userData.status || 'active',
-                      planType: 'premium',
+                      planType: userData.planType || 'premium',
                       listPermissions: userData.listPermissions || {}
                   };
                   localStorage.setItem('alistasession_member', JSON.stringify(virtualUser));
@@ -103,16 +110,15 @@ import {
                   return virtualUser;
               }
           }
-          throw new Error('E-mail ou senha inválidos.');
+          throw new Error('Usuário não encontrado ou senha incorreta.');
       }
   };
 
   export const createMasterUser = async (data: { name: string, email: string, phone: string, password: string }): Promise<void> => {
-    // Admin cria um master manual (virtual para protótipo)
     const newUserId = `master_${Date.now()}`;
     await setDoc(doc(db, 'users', newUserId), {
         name: data.name,
-        email: data.email.toLowerCase(),
+        email: data.email.trim().toLowerCase(),
         phone: data.phone,
         password: data.password,
         role: 'master',
@@ -127,7 +133,7 @@ import {
     const newUserId = `member_${Date.now()}`; 
     await setDoc(doc(db, 'users', newUserId), {
         name: childData.name,
-        email: childData.email.toLowerCase(),
+        email: childData.email.trim().toLowerCase(),
         phone: childData.phone,
         password: childData.password, 
         role: 'child',
@@ -139,6 +145,7 @@ import {
   };
 
   export const updateChildUser = async (userId: string, data: Partial<User>): Promise<void> => {
+    if (data.email) data.email = data.email.trim().toLowerCase();
     await updateDoc(doc(db, 'users', userId), data);
   };
 
@@ -157,19 +164,21 @@ import {
     });
   };
 
-  export const getAllUsersForAdmin = async (): Promise<User[]> => {
-    const snapshot = await getDocs(collection(db, 'users'));
-    const users: User[] = [];
-    snapshot.forEach(d => {
-        const data = d.data();
-        users.push({ 
-            id: d.id, 
-            ...data, 
-            name: data.name || 'Sem nome',
-            email: data.email || 'Sem email'
-        } as any);
+  export const subscribeToAllUsers = (onUpdate: (users: User[]) => void) => {
+    const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
+    return onSnapshot(q, (snapshot) => {
+        const users: User[] = [];
+        snapshot.forEach(d => {
+            const data = d.data();
+            users.push({ 
+                id: d.id, 
+                ...data,
+                name: data.name || 'Sem nome',
+                email: data.email || 'Sem email'
+            } as any);
+        });
+        onUpdate(users);
     });
-    return users;
   };
 
   export const updateUserStatus = async (userId: string, status: 'active' | 'blocked' | 'cancelled'): Promise<void> => {
