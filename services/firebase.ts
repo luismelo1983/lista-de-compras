@@ -1,5 +1,4 @@
-
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApp, getApps } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
@@ -13,6 +12,11 @@ const firebaseConfig = {
   measurementId: "G-7SDZLELYHR"
 };
 
-const app = initializeApp(firebaseConfig);
+// Robust Singleton Initialization
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+
+// Explicitly register services to the app instance
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+
+export default app;

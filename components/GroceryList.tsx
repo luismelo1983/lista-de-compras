@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { GroceryList as GroceryListType, GroceryItem, User, ListPrivilege } from '../types';
-import { IconArrowLeft, IconCheck, IconTrash, IconPlus, IconShare } from './Icons';
+import { IconArrowLeft, IconCheck, IconTrash, IconPlus, IconShare, IconChevronUp, IconChevronDown } from './Icons';
 
 interface GroceryListProps {
   list: GroceryListType;
@@ -12,6 +12,7 @@ interface GroceryListProps {
 
 const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, onUpdate }) => {
   const [newItemName, setNewItemName] = useState('');
+  const [newItemQty, setNewItemQty] = useState(1);
 
   // Privilégio específico para esta lista
   const userPrivilege: ListPrivilege = currentUser.role === 'admin' || currentUser.role === 'master' 
@@ -29,11 +30,28 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
     onUpdate({ ...list, items: list.items.map(i => i.id === item.id ? { ...i, checked: !item.checked } : i) });
   };
 
-  const addItem = (name: string) => {
-    if (!isMaster || !name.trim()) return;
-    const newItem: GroceryItem = { id: `i${Date.now()}`, name: name.trim(), checked: false, quantity: 1, order: list.items.length, createdAt: Date.now() };
+  const updateItemQuantity = (item: GroceryItem, delta: number) => {
+    if (!canWork) return;
+    const newQty = Math.max(1, (item.quantity || 1) + delta);
+    onUpdate({ 
+      ...list, 
+      items: list.items.map(i => i.id === item.id ? { ...i, quantity: newQty } : i) 
+    });
+  };
+
+  const addItem = () => {
+    if (!isMaster || !newItemName.trim()) return;
+    const newItem: GroceryItem = { 
+      id: `i${Date.now()}`, 
+      name: newItemName.trim(), 
+      checked: false, 
+      quantity: newItemQty, 
+      order: list.items.length, 
+      createdAt: Date.now() 
+    };
     onUpdate({ ...list, items: [newItem, ...list.items] });
     setNewItemName('');
+    setNewItemQty(1);
   };
 
   const deleteItem = (item: GroceryItem) => {
@@ -46,7 +64,7 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
         alert("Nenhum telefone configurado para esta lista.");
         return;
     }
-    const message = `aLista: Itens pendentes na lista ${list.name}:\n` + activeItems.map(i => `- ${i.name}`).join('\n');
+    const message = `aLista: Itens pendentes na lista ${list.name}:\n` + activeItems.map(i => `- ${i.name} (${i.quantity || 1})`).join('\n');
     const url = `https://wa.me/${list.contactPhone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
   };
@@ -66,9 +84,30 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
 
       <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-24">
         {isMaster && (
-            <div className="flex gap-2 bg-slate-50 p-2 rounded-2xl border shadow-inner">
-                <input type="text" placeholder="Novo item..." className="flex-1 bg-transparent px-2 font-bold text-sm outline-none" value={newItemName} onChange={e => setNewItemName(e.target.value)} onKeyDown={e => e.key === 'Enter' && addItem(newItemName)} />
-                <button onClick={() => addItem(newItemName)} className="bg-indigo-600 text-white p-2.5 rounded-xl"><IconPlus className="w-4 h-4" /></button>
+            <div className="flex flex-col gap-2 bg-slate-50 p-3 rounded-2xl border shadow-inner">
+                <div className="flex gap-2">
+                  <input 
+                    type="text" 
+                    placeholder="Nome do item..." 
+                    className="flex-1 bg-white border border-slate-200 px-3 py-2 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-indigo-500 transition-all" 
+                    value={newItemName} 
+                    onChange={e => setNewItemName(e.target.value)} 
+                    onKeyDown={e => e.key === 'Enter' && addItem()} 
+                  />
+                  <div className="flex items-center bg-white border border-slate-200 rounded-xl overflow-hidden">
+                    <button onClick={() => setNewItemQty(prev => Math.max(1, prev - 1))} className="px-2 py-1 text-slate-400 hover:text-indigo-600 transition-colors"><IconChevronDown className="w-4 h-4" /></button>
+                    <input 
+                      type="number" 
+                      className="w-10 text-center font-black text-xs text-indigo-600 bg-transparent outline-none" 
+                      value={newItemQty} 
+                      onChange={e => setNewItemQty(parseInt(e.target.value) || 1)}
+                    />
+                    <button onClick={() => setNewItemQty(prev => prev + 1)} className="px-2 py-1 text-slate-400 hover:text-indigo-600 transition-colors"><IconChevronUp className="w-4 h-4" /></button>
+                  </div>
+                </div>
+                <button onClick={addItem} className="w-full bg-indigo-600 text-white py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 active:scale-[0.98] transition-all">
+                  <IconPlus className="w-4 h-4" /> Adicionar à Lista
+                </button>
             </div>
         )}
 
@@ -76,23 +115,55 @@ const GroceryList: React.FC<GroceryListProps> = ({ list, currentUser, onBack, on
           <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">PENDENTES <span className="bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full">{activeItems.length}</span></h2>
           {activeItems.map((item) => (
             <div key={item.id} className={`flex items-center gap-3 p-3 bg-white border rounded-2xl shadow-sm ${!canWork ? 'opacity-80' : ''}`}>
-              <button onClick={() => toggleItem(item)} disabled={!canWork} className={`w-6 h-6 border-2 rounded-full flex items-center justify-center shrink-0 ${canWork ? 'border-slate-200 hover:border-indigo-500' : 'border-slate-100 bg-slate-50'}`} />
-              <p className="text-sm font-medium text-slate-700 truncate flex-1">{item.name}</p>
-              <div className="flex items-center gap-2">
-                {isMaster && <button onClick={() => deleteItem(item)} className="p-1 text-slate-300 hover:text-red-500"><IconTrash className="w-4 h-4" /></button>}
-                <span className="text-indigo-600 font-black text-[11px] bg-indigo-50 px-2 py-0.5 rounded-lg">({item.quantity || 1})</span>
+              <button onClick={() => toggleItem(item)} disabled={!canWork} className={`w-8 h-8 border-2 rounded-full flex items-center justify-center shrink-0 transition-all ${canWork ? 'border-slate-200 hover:border-indigo-500 hover:bg-indigo-50' : 'border-slate-100 bg-slate-50'}`}>
+                {item.checked && <IconCheck className="w-4 h-4 text-indigo-600" />}
+              </button>
+              
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-slate-700 truncate">{item.name}</p>
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Adicionado em {new Date(item.createdAt).toLocaleDateString()}</p>
               </div>
+
+              <div className="flex items-center gap-1 bg-slate-50 rounded-xl border border-slate-100 p-1">
+                <button 
+                  onClick={() => updateItemQuantity(item, -1)} 
+                  disabled={!canWork}
+                  className="p-1 text-slate-400 hover:text-indigo-600 disabled:opacity-30"
+                >
+                  <IconChevronDown className="w-4 h-4" />
+                </button>
+                <span className="w-6 text-center text-xs font-black text-indigo-600">{item.quantity || 1}</span>
+                <button 
+                  onClick={() => updateItemQuantity(item, 1)} 
+                  disabled={!canWork}
+                  className="p-1 text-slate-400 hover:text-indigo-600 disabled:opacity-30"
+                >
+                  <IconChevronUp className="w-4 h-4" />
+                </button>
+              </div>
+
+              {isMaster && (
+                <button onClick={() => deleteItem(item)} className="p-2 text-slate-300 hover:text-red-500 transition-colors">
+                  <IconTrash className="w-4 h-4" />
+                </button>
+              )}
             </div>
           ))}
         </div>
 
         {completedItems.length > 0 && (
           <div className="space-y-2 pt-6">
-            <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">OK's</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">OK's</h2>
+              <span className="text-[9px] font-black text-slate-300 uppercase">{completedItems.length} concluídos</span>
+            </div>
             {completedItems.map(item => (
-              <div key={item.id} className="flex items-center gap-3 p-3 bg-slate-50 border rounded-2xl opacity-60">
-                <button onClick={() => toggleItem(item)} disabled={!canWork} className="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center"><IconCheck className="w-3.5 h-3.5 text-white" /></button>
-                <p className="text-sm line-through font-medium text-slate-500 truncate flex-1">{item.name}</p>
+              <div key={item.id} className="flex items-center gap-3 p-3 bg-slate-50 border border-transparent rounded-2xl opacity-60">
+                <button onClick={() => toggleItem(item)} disabled={!canWork} className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center shadow-lg shadow-emerald-100"><IconCheck className="w-4 h-4 text-white" /></button>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm line-through font-bold text-slate-500 truncate">{item.name}</p>
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">{item.quantity || 1} unidade(s)</p>
+                </div>
               </div>
             ))}
           </div>
