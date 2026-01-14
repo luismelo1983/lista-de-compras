@@ -30,7 +30,7 @@ import {
       if (isVirtual) return fbUser;
 
       const userDoc = await getDoc(doc(db, 'users', fbUser.uid));
-      const userData = userDoc.data();
+      const userData = userDoc.exists() ? userDoc.data() : null;
       const seed = fbUser.displayName || fbUser.email || 'User';
 
       const isAdmin = fbUser.email === 'teste@teste.com';
@@ -78,39 +78,40 @@ import {
   export const login = async (email: string, password: string): Promise<User> => {
       const cleanEmail = email.trim().toLowerCase();
       
+      // 1. Tenta encontrar no Firestore primeiro (Eficaz para ryansonemberg30@gmail.com se for Master/Membro virtual)
+      const q = query(collection(db, 'users'), where('email', '==', cleanEmail), limit(1));
+      const snapshot = await getDocs(q);
+      
+      if (!snapshot.empty) {
+          const userDoc = snapshot.docs[0];
+          const userData = userDoc.data();
+          
+          if (userData.password === password) {
+              const virtualUser: User = {
+                  id: userDoc.id,
+                  name: userData.name,
+                  email: userData.email,
+                  phone: userData.phone,
+                  avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${userData.name}`,
+                  color: 'bg-indigo-500',
+                  role: userData.role || 'child',
+                  masterId: userData.masterId,
+                  status: userData.status || 'active',
+                  planType: userData.planType || 'premium',
+                  listPermissions: userData.listPermissions || {}
+              };
+              localStorage.setItem('alistasession_member', JSON.stringify(virtualUser));
+              window.location.reload(); 
+              return virtualUser;
+          }
+      }
+
       try {
-          // 1. Tenta Login Real (Firebase Auth)
+          // 2. Tenta Login Real (Firebase Auth) se não for virtual
           const userCredential = await signInWithEmailAndPassword(auth, cleanEmail, password);
           return await mapUser(userCredential.user);
       } catch (authError) {
-          // 2. Tenta Login Virtual (Firestore Query)
-          const q = query(collection(db, 'users'), where('email', '==', cleanEmail), limit(1));
-          const snapshot = await getDocs(q);
-          
-          if (!snapshot.empty) {
-              const userDoc = snapshot.docs[0];
-              const userData = userDoc.data();
-              
-              if (userData.password === password) {
-                  const virtualUser: User = {
-                      id: userDoc.id,
-                      name: userData.name,
-                      email: userData.email,
-                      phone: userData.phone,
-                      avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${userData.name}`,
-                      color: 'bg-indigo-500',
-                      role: userData.role || 'child',
-                      masterId: userData.masterId,
-                      status: userData.status || 'active',
-                      planType: userData.planType || 'premium',
-                      listPermissions: userData.listPermissions || {}
-                  };
-                  localStorage.setItem('alistasession_member', JSON.stringify(virtualUser));
-                  window.location.reload(); 
-                  return virtualUser;
-              }
-          }
-          throw new Error('Usuário não encontrado ou senha incorreta.');
+          throw new Error('E-mail ou senha incorretos. Verifique seus dados.');
       }
   };
 
@@ -192,7 +193,9 @@ import {
   };
   
   export const subscribeToLists = (user: User, onUpdate: (lists: GroceryList[]) => void) => {
-      const q = query(collection(db, 'lists'), where('userId', '==', user.masterId));
+      // Regra de visibilidade baseada no masterId (Membro vê listas do seu Master)
+      const targetId = user.role === 'child' ? user.masterId : user.id;
+      const q = query(collection(db, 'lists'), where('userId', '==', targetId));
 
       return onSnapshot(q, (snapshot) => {
           const lists: GroceryList[] = [];
