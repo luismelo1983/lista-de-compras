@@ -1,9 +1,7 @@
 
 import { 
     signInWithEmailAndPassword, 
-    createUserWithEmailAndPassword, 
     signOut, 
-    updateProfile, 
     onAuthStateChanged,
     User as FirebaseUser
   } from 'firebase/auth';
@@ -29,30 +27,42 @@ import {
   const mapUser = async (fbUser: FirebaseUser | any, isVirtual = false): Promise<User> => {
       if (isVirtual) return fbUser;
 
-      const userDoc = await getDoc(doc(db, 'users', fbUser.uid));
-      const userData = userDoc.exists() ? userDoc.data() : null;
-      const seed = fbUser.displayName || fbUser.email || 'User';
-
-      const isAdmin = fbUser.email === 'teste@teste.com';
-      
-      return {
-          id: fbUser.uid,
-          name: fbUser.displayName || userData?.name || 'Usuário',
-          email: fbUser.email || '',
-          phone: userData?.phone || '',
-          avatar: fbUser.photoURL || `https://api.dicebear.com/7.x/initials/svg?seed=${seed}`,
-          color: 'bg-indigo-500',
-          role: isAdmin ? 'admin' : (userData?.role || 'master'),
-          masterId: userData?.masterId || fbUser.uid,
-          status: userData?.status || 'active',
-          planType: isAdmin ? 'premium' : (userData?.planType || 'degustacao'),
-          expiresAt: isAdmin ? undefined : (userData?.expiresAt || (Date.now() + 7 * 24 * 60 * 60 * 1000)),
-          listPermissions: userData?.listPermissions || {}
-      };
+      try {
+          const userDoc = await getDoc(doc(db, 'users', fbUser.uid));
+          const userData = userDoc.exists() ? userDoc.data() : null;
+          const seed = fbUser.displayName || fbUser.email || 'User';
+          const isAdmin = fbUser.email === 'teste@teste.com';
+          
+          return {
+              id: fbUser.uid,
+              name: fbUser.displayName || userData?.name || 'Usuário',
+              email: fbUser.email || '',
+              phone: userData?.phone || '',
+              avatar: fbUser.photoURL || `https://api.dicebear.com/7.x/initials/svg?seed=${seed}`,
+              color: 'bg-indigo-500',
+              role: isAdmin ? 'admin' : (userData?.role || 'master'),
+              masterId: userData?.masterId || fbUser.uid,
+              status: userData?.status || 'active',
+              planType: isAdmin ? 'premium' : (userData?.planType || 'degustacao'),
+              expiresAt: isAdmin ? undefined : (userData?.expiresAt || (Date.now() + 7 * 24 * 60 * 60 * 1000)),
+              listPermissions: userData?.listPermissions || {}
+          };
+      } catch (e) {
+          // Se falhar ao ler o documento (permissão), retorna um perfil básico para não travar o app
+          return {
+              id: fbUser.uid,
+              name: fbUser.displayName || 'Usuário',
+              email: fbUser.email || '',
+              avatar: fbUser.photoURL || `https://api.dicebear.com/7.x/initials/svg?seed=${fbUser.email}`,
+              color: 'bg-indigo-500',
+              role: fbUser.email === 'teste@teste.com' ? 'admin' : 'master',
+              masterId: fbUser.uid,
+              status: 'active'
+          };
+      }
   };
   
   export const onAuthChange = (callback: (user: User | null) => void) => {
-      // Prioridade 1: Sessão Virtual (Membros/Masters criados via Admin/Master)
       const virtualUserJson = localStorage.getItem('alistasession_member');
       if (virtualUserJson) {
           try {
@@ -64,7 +74,6 @@ import {
           }
       }
 
-      // Prioridade 2: Firebase Auth Real
       return onAuthStateChanged(auth, async (fbUser) => {
           if (fbUser) {
               const user = await mapUser(fbUser);
@@ -77,41 +86,55 @@ import {
   
   export const login = async (email: string, password: string): Promise<User> => {
       const cleanEmail = email.trim().toLowerCase();
-      
-      // 1. Tenta encontrar no Firestore primeiro (Eficaz para ryansonemberg30@gmail.com se for Master/Membro virtual)
-      const q = query(collection(db, 'users'), where('email', '==', cleanEmail), limit(1));
-      const snapshot = await getDocs(q);
-      
-      if (!snapshot.empty) {
-          const userDoc = snapshot.docs[0];
-          const userData = userDoc.data();
-          
-          if (userData.password === password) {
-              const virtualUser: User = {
-                  id: userDoc.id,
-                  name: userData.name,
-                  email: userData.email,
-                  phone: userData.phone,
-                  avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${userData.name}`,
-                  color: 'bg-indigo-500',
-                  role: userData.role || 'child',
-                  masterId: userData.masterId,
-                  status: userData.status || 'active',
-                  planType: userData.planType || 'premium',
-                  listPermissions: userData.listPermissions || {}
-              };
-              localStorage.setItem('alistasession_member', JSON.stringify(virtualUser));
-              window.location.reload(); 
-              return virtualUser;
-          }
-      }
+      localStorage.removeItem('alistasession_member');
 
+      // 1. Tenta Login Real (Firebase Auth) primeiro para garantir autenticação antes de ler Firestore
       try {
-          // 2. Tenta Login Real (Firebase Auth) se não for virtual
           const userCredential = await signInWithEmailAndPassword(auth, cleanEmail, password);
           return await mapUser(userCredential.user);
-      } catch (authError) {
-          throw new Error('E-mail ou senha incorretos. Verifique seus dados.');
+      } catch (authError: any) {
+          // Se o erro for "user-not-found", tentamos o login virtual
+          // Caso contrário (senha errada para conta existente), lançamos erro
+          if (authError.code !== 'auth/user-not-found' && authError.code !== 'auth/invalid-credential') {
+              throw new Error('E-mail ou senha incorretos.');
+          }
+
+          // 2. Tenta encontrar no Firestore (Master/Membro virtual como o Ryan)
+          try {
+              const q = query(collection(db, 'users'), where('email', '==', cleanEmail), limit(1));
+              const snapshot = await getDocs(q);
+              
+              if (!snapshot.empty) {
+                  const userDoc = snapshot.docs[0];
+                  const userData = userDoc.data();
+                  
+                  if (userData.password === password) {
+                      const virtualUser: User = {
+                          id: userDoc.id,
+                          name: userData.name,
+                          email: userData.email,
+                          phone: userData.phone,
+                          avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${userData.name}`,
+                          color: 'bg-indigo-500',
+                          role: userData.role || 'child',
+                          masterId: userData.masterId,
+                          status: userData.status || 'active',
+                          planType: userData.planType || 'premium',
+                          listPermissions: userData.listPermissions || {}
+                      };
+                      localStorage.setItem('alistasession_member', JSON.stringify(virtualUser));
+                      window.location.reload(); 
+                      return virtualUser;
+                  }
+              }
+          } catch (fsError: any) {
+              console.error("Erro Firestore:", fsError);
+              if (fsError.code === 'permission-denied') {
+                  throw new Error('Permissão negada no banco de dados. Aguarde a sincronização do Firebase.');
+              }
+          }
+          
+          throw new Error('E-mail ou senha incorretos.');
       }
   };
 
@@ -162,7 +185,7 @@ import {
         members.push({ id: d.id, ...d.data() } as User);
       });
       onUpdate(members);
-    });
+    }, (err) => console.error("Erro membros:", err));
   };
 
   export const subscribeToAllUsers = (onUpdate: (users: User[]) => void) => {
@@ -179,7 +202,7 @@ import {
             } as any);
         });
         onUpdate(users);
-    });
+    }, (err) => console.error("Erro lista admin:", err));
   };
 
   export const updateUserStatus = async (userId: string, status: 'active' | 'blocked' | 'cancelled'): Promise<void> => {
@@ -193,7 +216,6 @@ import {
   };
   
   export const subscribeToLists = (user: User, onUpdate: (lists: GroceryList[]) => void) => {
-      // Regra de visibilidade baseada no masterId (Membro vê listas do seu Master)
       const targetId = user.role === 'child' ? user.masterId : user.id;
       const q = query(collection(db, 'lists'), where('userId', '==', targetId));
 
@@ -219,7 +241,7 @@ import {
               } as any);
           });
           onUpdate(lists.sort((a,b) => (a.order||0) - (b.order||0)));
-      });
+      }, (err) => console.error("Erro listas:", err));
   };
   
   export const createList = async (name: string, icon: string, user: User): Promise<void> => {

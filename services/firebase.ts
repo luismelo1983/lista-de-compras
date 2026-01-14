@@ -1,10 +1,7 @@
-import * as firebaseApp from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 
-// ------------------------------------------------------------------
-// CONFIGURAÇÃO FIREBASE
-// ------------------------------------------------------------------
+import { initializeApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: "AIzaSyA7Wq13_QhuSxUKP732QaGHfRQ0KfrPJ80",
@@ -16,14 +13,6 @@ const firebaseConfig = {
   measurementId: "G-7SDZLELYHR"
 };
 
-// Inicializa o Firebase
-const app = firebaseApp.initializeApp(firebaseConfig);
+const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-
-// Inicializa Firestore com persistência offline habilitada
-// Isso permite que o app funcione sem internet e sincronize depois
-export const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({
-    tabManager: persistentMultipleTabManager() 
-  })
-});
+export const db = getFirestore(app);
