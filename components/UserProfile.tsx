@@ -1,7 +1,8 @@
+
 import React, { useState } from 'react';
-import { User, GroceryList } from '../types';
+import { User, GroceryList, ChildPrivilege } from '../types';
 import * as storageService from '../services/storageService';
-import { IconArrowLeft, IconLock, IconUsers, IconSettings } from './Icons';
+import { IconArrowLeft } from './Icons';
 
 interface UserProfileProps {
   user: User;
@@ -10,183 +11,100 @@ interface UserProfileProps {
 }
 
 const UserProfile: React.FC<UserProfileProps> = ({ user, lists, onBack }) => {
-  const [name, setName] = useState(user.name);
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState({ type: '', text: '' });
+  const [tab, setTab] = useState<'profile' | 'group' | 'config'>('profile');
+  const [childEmail, setChildEmail] = useState('');
+  const [childName, setChildName] = useState('');
+  const [childPass, setChildPass] = useState('');
+  const [childPrivilege, setChildPrivilege] = useState<ChildPrivilege>('view');
+  const [childAllowedLists, setChildAllowedLists] = useState<string[]>([]);
 
-  // List Settings State
-  const [selectedListId, setSelectedListId] = useState<string>('');
-  const [webhookUrl, setWebhookUrl] = useState('');
-  const [contactName, setContactName] = useState('');
-  const [contactPhone, setContactPhone] = useState('');
+  const isMaster = user.role === 'master' || user.role === 'admin';
 
-  const handleUpdateProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setMsg({ type: '', text: '' });
-
-    try {
-      if (name !== user.name) {
-        await storageService.updateUserProfileName(name);
-        setMsg({ type: 'success', text: 'Nome atualizado!' });
-      }
-
-      if (password) {
-        if (password.length < 6) throw new Error('Mínimo 6 caracteres.');
-        if (password !== confirmPassword) throw new Error('Senhas não coincidem.');
-        await storageService.updateUserPassword(password);
-        setMsg({ type: 'success', text: 'Senha atualizada!' });
-        setPassword('');
-        setConfirmPassword('');
-      }
-    } catch (error: any) {
-      setMsg({ type: 'error', text: error.message || 'Erro ao atualizar.' });
-    } finally {
-      setLoading(false);
-    }
+  const handleAddChild = async () => {
+    if (!childEmail || !childName) return;
+    await storageService.createChildUser(user, {
+        name: childName,
+        email: childEmail,
+        password: childPass,
+        privilege: childPrivilege,
+        allowedLists: childAllowedLists
+    });
+    alert("Novo membro adicionado ao grupo!");
+    setChildEmail(''); setChildName(''); setChildPass(''); setChildAllowedLists([]);
   };
 
-  const handleListSelect = (id: string) => {
-      setSelectedListId(id);
-      const list = lists.find(l => l.id === id);
-      if (list) {
-          setWebhookUrl(list.webhookUrl || '');
-          setContactName(list.contactName || '');
-          setContactPhone(list.contactPhone || '');
-      }
-  };
-
-  const handleUpdateListParams = async () => {
-    if (!selectedListId) return;
-    setLoading(true);
-    try {
-        const list = lists.find(l => l.id === selectedListId);
-        if (list) {
-            await storageService.updateListMetadata(
-                selectedListId, 
-                list.name, 
-                list.icon, 
-                webhookUrl, 
-                contactName, 
-                contactPhone
-            );
-            setMsg({ type: 'success', text: 'Parâmetros da lista atualizados!' });
-        }
-    } catch (e) {
-        setMsg({ type: 'error', text: 'Erro ao salvar parâmetros.' });
-    } finally {
-        setLoading(false);
-    }
+  const toggleList = (id: string) => {
+    setChildAllowedLists(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   };
 
   return (
-    <div className="flex flex-col h-full bg-white rounded-2xl shadow-xl overflow-hidden">
-        <div className="bg-slate-50 border-b px-4 py-3 flex items-center gap-3">
+    <div className="flex flex-col h-full bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-100">
+        <div className="bg-slate-50 border-b px-6 py-4 flex items-center gap-4">
             <button onClick={onBack} className="p-1.5 -ml-2 text-slate-600"><IconArrowLeft className="w-5 h-5" /></button>
-            <h1 className="font-bold text-lg text-slate-800">Meu Perfil</h1>
+            <h1 className="font-black text-lg text-slate-800">Perfil aLista</h1>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-5 pb-20">
-            <div className="flex flex-col items-center mb-6">
-                <img src={user.avatar} alt={user.name} className="w-20 h-20 rounded-full shadow-md ring-4 ring-white mb-3" />
-                <p className="text-sm text-slate-500 font-bold">{user.email}</p>
-            </div>
+        <div className="flex border-b text-[10px] font-black uppercase tracking-widest text-slate-400">
+            <button onClick={() => setTab('profile')} className={`flex-1 py-4 border-b-2 transition-all ${tab === 'profile' ? 'border-indigo-600 text-indigo-600' : 'border-transparent'}`}>Meu Perfil</button>
+            {isMaster && <button onClick={() => setTab('group')} className={`flex-1 py-4 border-b-2 transition-all ${tab === 'group' ? 'border-indigo-600 text-indigo-600' : 'border-transparent'}`}>Membros</button>}
+            {isMaster && <button onClick={() => setTab('config')} className={`flex-1 py-4 border-b-2 transition-all ${tab === 'config' ? 'border-indigo-600 text-indigo-600' : 'border-transparent'}`}>Config</button>}
+        </div>
 
-            <div className="space-y-8 max-w-sm mx-auto">
-                {/* Perfil Básico */}
-                <form onSubmit={handleUpdateProfile} className="space-y-4">
-                    <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b pb-1">Dados Pessoais</h2>
-                    <div>
-                        <label className="block text-[9px] font-black text-slate-500 uppercase mb-1">Nome</label>
-                        <div className="relative">
-                            <IconUsers className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
-                            <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold" />
-                        </div>
-                    </div>
-                    <div className="space-y-2">
-                        <label className="block text-[9px] font-black text-slate-500 uppercase mb-1">Alterar Senha (opcional)</label>
-                        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Nova senha" style={{WebkitAppearance: 'none'}} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm" />
-                        <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Confirmar" style={{WebkitAppearance: 'none'}} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm" />
-                    </div>
-                    <button type="submit" disabled={loading} className="w-full bg-slate-800 text-white font-black py-3 rounded-xl shadow-sm text-[10px] uppercase tracking-widest">
-                        Atualizar Perfil
-                    </button>
-                </form>
-
-                {/* Configurações das Listas (Transferido da GroceryList) */}
-                <div className="space-y-4 pt-4">
-                    <h2 className="text-[10px] font-black text-indigo-600 uppercase tracking-widest border-b border-indigo-100 pb-1 flex items-center gap-2">
-                        <IconSettings className="w-3 h-3"/> Parâmetros das Listas
-                    </h2>
-                    
-                    <div className="space-y-4">
+        <div className="flex-1 overflow-y-auto p-6 space-y-8">
+            {tab === 'profile' && (
+                <div className="space-y-6">
+                    <div className="flex items-center gap-4">
+                        <img src={user.avatar} alt="" className="w-16 h-16 rounded-2xl shadow-lg border-2 border-white ring-1 ring-slate-100" />
                         <div>
-                            <label className="block text-[9px] font-black text-slate-500 uppercase mb-1">Selecione a Lista</label>
-                            <select 
-                                value={selectedListId} 
-                                onChange={(e) => handleListSelect(e.target.value)}
-                                className="w-full px-3 py-2.5 bg-indigo-50 border border-indigo-100 rounded-xl text-sm font-bold text-indigo-900 outline-none"
-                            >
-                                <option value="">Escolha uma lista...</option>
-                                {lists.map(l => <option key={l.id} value={l.id}>{l.icon} {l.name}</option>)}
-                            </select>
+                            <p className="font-black text-slate-800 text-xl">{user.name}</p>
+                            <p className="text-[10px] font-black text-indigo-600 uppercase tracking-tighter">{user.role === 'child' ? 'MEMBRO' : user.role.toUpperCase()} • {user.planType || 'Free'}</p>
+                        </div>
+                    </div>
+                    <div className="bg-slate-50 p-4 rounded-2xl space-y-2">
+                        <p className="text-[10px] font-black text-slate-400 uppercase">Status da Assinatura</p>
+                        <div className="flex justify-between items-center">
+                            <span className="text-sm font-bold text-slate-700">Validade</span>
+                            <span className="text-xs font-black text-emerald-600">{new Date(user.expiresAt || 0).toLocaleDateString()}</span>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {tab === 'group' && (
+                <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+                    <div className="bg-indigo-50 p-5 rounded-3xl border border-indigo-100 space-y-4">
+                        <h3 className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Adicionar Novo Membro</h3>
+                        <input value={childName} onChange={e => setChildName(e.target.value)} className="w-full p-3 rounded-xl border border-indigo-200 text-sm font-bold" placeholder="Nome do Membro" />
+                        <input value={childEmail} onChange={e => setChildEmail(e.target.value)} className="w-full p-3 rounded-xl border border-indigo-200 text-sm font-bold" placeholder="E-mail de Acesso" />
+                        <input type="password" value={childPass} onChange={e => setChildPass(e.target.value)} className="w-full p-3 rounded-xl border border-indigo-200 text-sm font-bold" placeholder="Senha Provisória" />
+                        
+                        <div className="space-y-2">
+                            <p className="text-[9px] font-black text-indigo-400 uppercase">Permissão de Acesso</p>
+                            <div className="flex gap-2">
+                                <button onClick={() => setChildPrivilege('view')} className={`flex-1 py-2 rounded-lg text-[10px] font-black border transition-all ${childPrivilege === 'view' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-indigo-400'}`}>Somente Ver</button>
+                                <button onClick={() => setChildPrivilege('work')} className={`flex-1 py-2 rounded-lg text-[10px] font-black border transition-all ${childPrivilege === 'work' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-indigo-400'}`}>Trabalhar Lista</button>
+                            </div>
                         </div>
 
-                        {selectedListId && (
-                            <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                                <div>
-                                    <label className="block text-[9px] font-black text-slate-500 uppercase mb-1">Webhook URL (BotConversa)</label>
-                                    <input 
-                                        type="text" 
-                                        value={webhookUrl}
-                                        onChange={e => setWebhookUrl(e.target.value)}
-                                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold"
-                                        placeholder="https://..."
-                                    />
-                                </div>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div>
-                                        <label className="block text-[9px] font-black text-slate-500 uppercase mb-1">Nome Contato</label>
-                                        <input 
-                                            type="text" 
-                                            value={contactName}
-                                            onChange={e => setContactName(e.target.value)}
-                                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-[9px] font-black text-slate-500 uppercase mb-1">WhatsApp</label>
-                                        <input 
-                                            type="tel" 
-                                            value={contactPhone}
-                                            onChange={e => setContactPhone(e.target.value)}
-                                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold"
-                                            placeholder="55119..."
-                                        />
-                                    </div>
-                                </div>
-                                <button onClick={handleUpdateListParams} className="w-full bg-indigo-600 text-white font-black py-3 rounded-xl shadow-lg text-[10px] uppercase tracking-widest">
-                                    Salvar Parâmetros da Lista
-                                </button>
+                        <div className="space-y-2">
+                            <p className="text-[9px] font-black text-indigo-400 uppercase">Listas Liberadas</p>
+                            <div className="flex flex-wrap gap-2">
+                                {lists.map(l => (
+                                    <button 
+                                        key={l.id} 
+                                        onClick={() => toggleList(l.id)}
+                                        className={`px-3 py-1.5 rounded-full text-[10px] font-bold border transition-all ${childAllowedLists.includes(l.id) ? 'bg-indigo-200 border-indigo-400 text-indigo-800' : 'bg-white border-slate-200 text-slate-400'}`}
+                                    >
+                                        {l.icon} {l.name}
+                                    </button>
+                                ))}
                             </div>
-                        )}
+                        </div>
+
+                        <button onClick={handleAddChild} className="w-full bg-indigo-600 text-white font-black py-3 rounded-2xl shadow-lg uppercase text-[10px] tracking-widest">Cadastrar Membro</button>
                     </div>
                 </div>
-
-                {msg.text && (
-                    <div className={`p-4 rounded-xl text-[10px] font-black uppercase tracking-widest text-center ${msg.type === 'error' ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                        {msg.text}
-                    </div>
-                )}
-
-                <div className="pt-8 border-t text-center">
-                    <button type="button" onClick={() => window.location.reload()} className="text-[10px] text-indigo-500 font-bold border border-indigo-100 px-4 py-2 rounded-xl hover:bg-indigo-50 transition-colors uppercase tracking-widest">
-                        Forçar Atualização de Versão
-                    </button>
-                </div>
-            </div>
+            )}
         </div>
     </div>
   );
